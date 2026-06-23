@@ -49,8 +49,10 @@ GBSimulation simulation;
 struct RenderingMaterial
 {
     GBVector3 color = { 1.0f,1.0f,1.0f };
-    RenderingMaterial(GBVector3 col) :
-        color(col)
+    bool drawWireFrame = false;
+    bool useTexture = false;
+    RenderingMaterial(GBVector3 col, bool drawWireFrame = false, bool useTexture = false) :
+        color(col) , drawWireFrame(drawWireFrame), useTexture(useTexture)
     {
     }
 
@@ -69,7 +71,7 @@ void initSimulation()
 {
     GBBody* pBody = simulation.createBody();
     GBBoxCollider* pBox = simulation.attachBoxCollider(pBody, { 0.5f,0.5f,0.5f });
-    pBox->pData = new RenderingMaterial({ 1,0,1 });
+    pBox->pData = new RenderingMaterial({ 1,0,1 }, true, true);
     pBody->angularVelocity = { 2,2,2 };
     pBody->transform.position = { 0,0,10 };
 
@@ -90,6 +92,7 @@ int viewPosLoc;
 int ambientLoc;
 int colDiffuseLocation;
 int scaleLoc;
+int useTextureLoc;
 
 Shader shader;
 
@@ -156,10 +159,24 @@ void drawSimulation()
                     SHADER_UNIFORM_VEC2
                 );
 
+
                 BeginShaderMode(shader);
+
+                int useTexture = pMat->useTexture;
+
+                SetShaderValue(
+                    shader,
+                    useTextureLoc,
+                    &useTexture,
+                    SHADER_UNIFORM_INT
+                );
+
+
                 DrawModel(cubeModel, { 0,0,0 }, 1.0f, pMat->getColor());
                 EndShaderMode();
-                drawBoxEdges(*pBox);
+
+                if(pMat->drawWireFrame)
+                    drawBoxEdges(*pBox);
 
                 break;
             }
@@ -211,6 +228,7 @@ int main(void)
     ambientLoc = GetShaderLocation(shader, "ambient");
     colDiffuseLocation = GetShaderLocation(shader, "colDiffuse");
     scaleLoc = GetShaderLocation(shader, "scale");
+    useTextureLoc = GetShaderLocation(shader, "useTexture");
 
     float ambient[4] = { 0.2f, 0.2f, 0.2f, 1.0f };
     SetShaderValue(shader, ambientLoc, ambient, SHADER_UNIFORM_VEC4);

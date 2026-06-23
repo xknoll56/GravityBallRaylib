@@ -11,6 +11,7 @@ varying vec3 fragNormal;
 // Input uniform values
 uniform sampler2D texture0;
 uniform vec4 colDiffuse;
+uniform int useTexture;
 
 // NOTE: Add your custom variables here
 
@@ -34,7 +35,10 @@ uniform vec3 viewPos;
 void main()
 {
     // Texel color fetching from texture sampler
-    vec4 texelColor = texture2D(texture0, fragTexCoord) * colDiffuse;
+    float useTex = float(useTexture);
+    
+    vec4 sampled = texture2D(texture0, fragTexCoord);
+    vec4 texelColor = mix(sampled * colDiffuse, colDiffuse, useTex);
     vec3 lightDot = vec3(0.0);
     vec3 normal = normalize(fragNormal);
     vec3 viewD = normalize(viewPos - fragPosition);
