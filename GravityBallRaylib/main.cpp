@@ -23,7 +23,7 @@ Vector3 toRayVec(GBVector3 v)
 
 Quaternion toRayQuat(GBQuaternion q)
 {
-    return { q.y, q.z, -q.x, q.w };
+    return { q.y, q.z, q.x, q.w };
 }
 
 Matrix makeTransform(
@@ -41,6 +41,21 @@ Matrix makeTransform(
         MatrixMultiply(S, R),
         T
     );
+}
+
+GBSimulation simulation;
+
+void initSimulation()
+{
+    GBBody* pBody = simulation.createBody();
+    GBBoxCollider* pBox = simulation.attachBoxCollider(pBody, { 0.5f,0.5f,0.5f });
+    pBody->angularVelocity = { 2,2,2 };
+    pBody->transform.position = { 0,0,10 };
+
+    pBody = simulation.createBody(1.0f, true);
+    pBox = simulation.attachBoxCollider(pBody, { 20,20, 0.05f });
+    pBody->transform.position = { 0,0,-0.025 };
+    simulation.init();
 }
 
 //------------------------------------------------------------------------------------
@@ -63,9 +78,6 @@ int main(void)
     camera.fovy = 45.0f;                                // Camera field-of-view Y
     camera.projection = CAMERA_PERSPECTIVE;             // Camera projection type
 
-    GBVector3 cubePosition = { 0.0f, 10.0f, 10.0f };
-    GBQuaternion cubeRotation;
-
     Mesh cubeMesh = GenMeshCube(1.0f, 1.0f, 1.0f);
     Model cubeModel = LoadModelFromMesh(cubeMesh);
 
@@ -75,9 +87,14 @@ int main(void)
     SetTargetFPS(60);                   // Set our game to run at 60 frames-per-second
     //--------------------------------------------------------------------------------------
 
+    initSimulation();
+
     // Main game loop
     while (!WindowShouldClose())        // Detect window close button or ESC key
     {
+        float dt = GetFrameTime();
+
+        simulation.step(dt);
         // Update
         //----------------------------------------------------------------------------------
         UpdateCamera(&camera, CAMERA_FREE);
@@ -93,21 +110,21 @@ int main(void)
 
         BeginMode3D(camera);
 
-        cubeRotation = cubeRotation * GBQuaternion::fromAxisAngle(GBVector3::forward(), 0.01f);
-        cubeModel.transform = makeTransform(cubePosition, cubeRotation, { 1,1,1 });
-        DrawModel(cubeModel,{0,0,0}, 1.0f, BLUE);
+        GBBody* pBoxBody = simulation.getBody(0);
+
+        cubeModel.transform = makeTransform(pBoxBody->transform.position, pBoxBody->transform.rotation, { 1,1,1 });
+        DrawModel(cubeModel,{0,0,0}, 1.0f, pBoxBody->isSleeping?BLUE:GREEN);
+
+        pBoxBody = simulation.getBody(1);
+
+        cubeModel.transform = makeTransform(pBoxBody->transform.position, pBoxBody->transform.rotation, { 20,20,0.05 });
+        DrawModel(cubeModel, { 0,0,0 }, 1.0f, RED);
 
         DrawGrid(10, 1.0f);
 
         EndMode3D();
 
-        DrawRectangle(10, 10, 320, 93, Fade(SKYBLUE, 0.5f));
-        DrawRectangleLines(10, 10, 320, 93, BLUE);
-
-        DrawText("Free camera default controls:", 20, 20, 10, BLACK);
-        DrawText("- Mouse Wheel to Zoom in-out", 40, 40, 10, DARKGRAY);
-        DrawText("- Mouse Wheel Pressed to Pan", 40, 60, 10, DARKGRAY);
-        DrawText("- Z to zoom to (0, 0, 0)", 40, 80, 10, DARKGRAY);
+        DrawText("GRAVITY BALL!", 20, 20, 10, BLACK);
 
         EndDrawing();
         //----------------------------------------------------------------------------------
