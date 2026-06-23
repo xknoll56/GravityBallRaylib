@@ -71,14 +71,20 @@ void initSimulation()
 {
     GBBody* pBody = simulation.createBody();
     GBBoxCollider* pBox = simulation.attachBoxCollider(pBody, { 0.5f,0.5f,0.5f });
-    pBox->pData = new RenderingMaterial({ 1,0,1 }, true, true);
+    pBox->pData = new RenderingMaterial({ 0,1,1 }, true, true);
     pBody->angularVelocity = { 2,2,2 };
     pBody->transform.position = { 0,0,10 };
 
     pBody = simulation.createBody();
     GBSphereCollider* pSphere = simulation.attachSphereCollider(pBody, 0.65f);
     pBody->transform.position = { 0,5,10 };
-    pSphere->pData = new RenderingMaterial({ 0.6,0.3,0.86 }, true, true);
+    pSphere->pData = new RenderingMaterial({ 0.1,0.3,0.86 }, false, false);
+
+    pBody = simulation.createBody();
+    GBCapsuleCollider* pCap = simulation.attachCapsuleCollider(pBody, 0.5f, 1.0f);
+    pBody->transform.position = { 0,-5, 10 };
+    pBody->transform.rotation = GBQuaternion::fromAxisAngle({ 1,1,2 }, 124.f);
+    pCap->pData = new RenderingMaterial({ 0.1,0.8,0.86 }, false, false);
 
 
     pBody = simulation.createBody(1.0f, true);
@@ -92,6 +98,8 @@ Mesh cubeMesh;
 Model cubeModel;
 Mesh sphereMesh;
 Model sphereModel;
+Mesh cylinderMesh;
+Model cylinderModel;
 
 int viewPosLoc;
 int ambientLoc;
@@ -144,70 +152,126 @@ void drawSimulation()
             GBCapsuleCollider* pCap;
             GBSphereCollider* pSphere;
             RenderingMaterial* pMat = (RenderingMaterial*)pCol->pData;
-            switch (pCol->type)
+
+            if (pMat)
             {
-            case ColliderType::Sphere:
-            {
-                pSphere = (GBSphereCollider*)pCol;
-                sphereModel.transform = makeTransform(pSphere->transform.position, pSphere->transform.rotation,
-                     GBVector3::uniformSize(pSphere->radius * 2.0f));
                 BeginShaderMode(shader);
 
-                int useTexture = pMat->useTexture;
+                switch (pCol->type)
+                {
+                case ColliderType::Sphere:
+                {
+                    pSphere = (GBSphereCollider*)pCol;
+                    sphereModel.transform = makeTransform(pSphere->transform.position, pSphere->transform.rotation,
+                        GBVector3::uniformSize(pSphere->radius * 2.0f));
 
-                SetShaderValue(
-                    shader,
-                    useTextureLoc,
-                    &useTexture,
-                    SHADER_UNIFORM_INT
-                );
+                    Vector2 s = { 2.0f , 2.0f };
+                    SetShaderValue(
+                        shader,
+                        scaleLoc,
+                        &s,
+                        SHADER_UNIFORM_VEC2
+                    );
+
+                    
+
+                    int useTexture = pMat->useTexture;
+
+                    SetShaderValue(
+                        shader,
+                        useTextureLoc,
+                        &useTexture,
+                        SHADER_UNIFORM_INT
+                    );
 
 
-                DrawModel(sphereModel, { 0,0,0 }, 1.0f, pMat->getColor());
+                    DrawModel(sphereModel, { 0,0,0 }, 1.0f, pMat->getColor());
+                   
+
+                    break;
+                }
+                case ColliderType::Box:
+                {
+                    pBox = (GBBoxCollider*)pCol;
+                    pBox->setVerts();
+                    pCol->pBody->updateColliders();
+                    cubeModel.transform = makeTransform(pBox->transform.position, pBox->transform.rotation, 2.0f * pBox->halfExtents);
+                    float maxX = GBMax(pBox->halfExtents.x, pBox->halfExtents.y);
+                    float maxY = GBMax(maxX, pBox->halfExtents.z);
+                    Vector2 s = { 2.0f * maxX, 2.0f * maxY };
+                    SetShaderValue(
+                        shader,
+                        scaleLoc,
+                        &s,
+                        SHADER_UNIFORM_VEC2
+                    );
+
+                    BeginShaderMode(shader);
+
+                    int useTexture = pMat->useTexture;
+
+                    SetShaderValue(
+                        shader,
+                        useTextureLoc,
+                        &useTexture,
+                        SHADER_UNIFORM_INT
+                    );
+
+
+                    DrawModel(cubeModel, { 0,0,0 }, 1.0f, pMat->getColor());
+                    EndShaderMode();
+
+                    if (pMat->drawWireFrame)
+                        drawBoxEdges(*pBox);
+
+                    break;
+                }
+                case ColliderType::Capsule:
+                    pCap = (GBCapsuleCollider*)pCol;
+
+
+                    Vector2 s = { 2.0f , 2.0f };
+                    SetShaderValue(
+                        shader,
+                        scaleLoc,
+                        &s,
+                        SHADER_UNIFORM_VEC2
+                    );
+
+
+
+                    int useTexture = pMat->useTexture;
+
+                    SetShaderValue(
+                        shader,
+                        useTextureLoc,
+                        &useTexture,
+                        SHADER_UNIFORM_INT
+                    );
+
+
+                    GBVector3 upper, lower, up;
+                    pCap->extractSphereLocations(upper, lower, &up);
+                    sphereModel.transform = makeTransform(upper, pCap->transform.rotation,
+                        GBVector3::uniformSize(pCap->radius * 2.0f));
+
+
+                    DrawModel(sphereModel, { 0,0,0 }, 1.0f, pMat->getColor());
+
+                    sphereModel.transform = makeTransform(lower, pCap->transform.rotation,
+                        GBVector3::uniformSize(pCap->radius * 2.0f));
+
+
+                    DrawModel(sphereModel, { 0,0,0 }, 1.0f, pMat->getColor());
+
+                    cylinderModel.transform = makeTransform(pCap->transform.position - up*pCap->height*0.5f, pCap->transform.rotation,
+                        {2.0f* pCap->radius, pCap->height, 2.0f*pCap->radius});
+                    DrawModel(cylinderModel, { 0,0,0 }, 1.0f, pMat->getColor());
+
+                    break;
+                }
+
                 EndShaderMode();
-
-                break;
-            }
-            case ColliderType::Box:
-            {
-                pBox = (GBBoxCollider*)pCol;
-                pBox->setVerts();
-                pCol->pBody->updateColliders();
-                cubeModel.transform = makeTransform(pBox->transform.position, pBox->transform.rotation, 2.0f * pBox->halfExtents);
-                //SetShaderValueMatrix(shader, matModelLoc, cubeModel.transform);
-                float maxX = GBMax(pBox->halfExtents.x, pBox->halfExtents.y);
-                float maxY = GBMax(maxX, pBox->halfExtents.z);
-                Vector2 s = {2.0f*maxX, 2.0f*maxY };
-                SetShaderValue(
-                    shader,
-                    scaleLoc,
-                    &s,
-                    SHADER_UNIFORM_VEC2
-                );
-
-                BeginShaderMode(shader);
-
-                int useTexture = pMat->useTexture;
-
-                SetShaderValue(
-                    shader,
-                    useTextureLoc,
-                    &useTexture,
-                    SHADER_UNIFORM_INT
-                );
-
-
-                DrawModel(cubeModel, { 0,0,0 }, 1.0f, pMat->getColor());
-                EndShaderMode();
-
-                if(pMat->drawWireFrame)
-                    drawBoxEdges(*pBox);
-
-                break;
-            }
-            case ColliderType::Capsule:
-                pCap = (GBCapsuleCollider*)pCol;
-                break;
             }
         }
     }
@@ -240,6 +304,9 @@ int main(void)
      cubeModel = LoadModelFromMesh(cubeMesh);
      sphereMesh = GenMeshSphere(0.5f, 20, 20);
      sphereModel = LoadModelFromMesh(sphereMesh);
+     cylinderMesh = GenMeshCylinder(0.5f, 1.0f, 20.0f);
+     cylinderModel = LoadModelFromMesh(cylinderMesh);
+
 
    shader = LoadShader(
         "Resources/lighting.vs",
@@ -248,6 +315,10 @@ int main(void)
 
     cubeModel.materials[0].shader = shader;
     cubeModel.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = crateTex;
+    sphereModel.materials[0].shader = shader;
+    sphereModel.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = crateTex;
+    cylinderModel.materials[0].shader = shader;
+    cylinderModel.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = crateTex;
 
     viewPosLoc = GetShaderLocation(shader, "viewPos");
     ambientLoc = GetShaderLocation(shader, "ambient");
