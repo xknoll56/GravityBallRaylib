@@ -78,7 +78,8 @@ void initSimulation()
     pBody = simulation.createBody();
     GBSphereCollider* pSphere = simulation.attachSphereCollider(pBody, 0.65f);
     pBody->transform.position = { 0,5,10 };
-    pSphere->pData = new RenderingMaterial({ 0.1,0.3,0.86 }, false, false);
+   pBody->angularVelocity = { 3.0f,3.0,1.0 };
+    pSphere->pData = new RenderingMaterial({ 0.1,0.3,0.86 }, true, false);
 
     pBody = simulation.createBody();
     GBCapsuleCollider* pCap = simulation.attachCapsuleCollider(pBody, 0.5f, 1.0f);
@@ -142,6 +143,32 @@ void drawBoxEdges(const GBBoxCollider& box, Color color = ORANGE)
     DrawLine3D(verts[3], verts[7], color);
 }
 
+void drawSphereFrame(GBSphereCollider& sphere, const RenderingMaterial& mat)
+{
+
+    for (int i = 0; i < 3; i++)
+    {
+        Vector3 axis(0, 0, 0);
+        if (i == 0)
+            axis.x = 1.0f;
+        else if (i == 1)
+            axis.y = 1.0f;
+        else
+            axis.z = 1.0f;
+
+        if (mat.drawWireFrame)
+        {
+            DrawCircle3D(
+                toRayVec(sphere.transform.position),
+                sphere.radius,
+                axis,
+                360.0f/GB_PI ,
+                GREEN
+            );
+        }
+    }
+}
+
 void drawSimulation()
 {
     for (auto& bodyIt : simulation.rigidBodies)
@@ -186,7 +213,8 @@ void drawSimulation()
 
 
                     DrawModel(sphereModel, { 0,0,0 }, 1.0f, pMat->getColor());
-                   
+                    
+                    drawSphereFrame(*pSphere, *pMat);
 
                     break;
                 }
