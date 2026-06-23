@@ -31,9 +31,16 @@ struct Light {
 uniform Light lights[MAX_LIGHTS];
 uniform vec4 ambient;
 uniform vec3 viewPos;
+Light dirLight;
 
 void main()
 {
+
+    dirLight.type = LIGHT_DIRECTIONAL;
+    dirLight.target = vec3(0,0,0);
+    dirLight.position = vec3(20,20,100);
+    dirLight.color = vec4(1.0f,1.0f,1.0f, 1.0f);
+
     // Texel color fetching from texture sampler
     float useTex = float(useTexture);
     
@@ -71,6 +78,22 @@ void main()
             if (NdotL > 0.0) specCo = pow(max(0.0, dot(viewD, reflect(-(light), normal))), 16.0); // 16 refers to shine
             specular += specCo;
         }
+    }
+
+    {
+             vec3 light = vec3(0.0);
+
+            if (dirLight.type == LIGHT_DIRECTIONAL)
+            {
+                light = -normalize(dirLight.target - dirLight.position);
+            }
+
+            float NdotL = max(dot(normal, light), 0.0);
+            lightDot += dirLight.color.rgb*NdotL;
+
+            float specCo = 0.0;
+            if (NdotL > 0.0) specCo = pow(max(0.0, dot(viewD, reflect(-(light), normal))), 16.0); // 16 refers to shine
+            specular += specCo;
     }
 
     vec4 finalColor = (texelColor*((tint + vec4(specular, 1.0))*vec4(lightDot, 1.0)));

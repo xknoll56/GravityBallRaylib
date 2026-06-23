@@ -185,7 +185,6 @@ void drawSimulation()
                     SHADER_UNIFORM_VEC2
                 );
 
-
                 BeginShaderMode(shader);
 
                 int useTexture = pMat->useTexture;
