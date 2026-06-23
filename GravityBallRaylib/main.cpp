@@ -86,6 +86,12 @@ Model cubeModel;
 Mesh sphereMesh;
 Model sphereModel;
 
+int viewPosLoc;
+int ambientLoc;
+int colDiffuseLocation;
+int scaleLoc;
+
+Shader shader;
 
 
 void drawBoxEdges(const GBBoxCollider& box, Color color = ORANGE)
@@ -135,16 +141,28 @@ void drawSimulation()
                 pSphere = (GBSphereCollider*)pCol;
                 break;
             case ColliderType::Box:
+            {
                 pBox = (GBBoxCollider*)pCol;
                 pBox->setVerts();
                 pCol->pBody->updateColliders();
-                cubeModel.transform = makeTransform(pBox->transform.position, pBox->transform.rotation, 2.0f*pBox->halfExtents);
+                cubeModel.transform = makeTransform(pBox->transform.position, pBox->transform.rotation, 2.0f * pBox->halfExtents);
+                float maxX = GBMax(pBox->halfExtents.x, pBox->halfExtents.y);
+                float maxY = GBMax(maxX, pBox->halfExtents.z);
+                Vector2 s = {2.0f*maxX, 2.0f*maxY };
+                SetShaderValue(
+                    shader,
+                    scaleLoc,
+                    &s,
+                    SHADER_UNIFORM_VEC2
+                );
 
-
+                BeginShaderMode(shader);
                 DrawModel(cubeModel, { 0,0,0 }, 1.0f, pMat->getColor());
+                EndShaderMode();
                 drawBoxEdges(*pBox);
-                
+
                 break;
+            }
             case ColliderType::Capsule:
                 pCap = (GBCapsuleCollider*)pCol;
                 break;
@@ -163,7 +181,7 @@ int main(void)
     const int screenWidth = 1024;
     const int screenHeight = 768;
 
-    InitWindow(screenWidth, screenHeight, "raylib [core] example - 3d camera free");
+    InitWindow(screenWidth, screenHeight, "raylib [core] example - 3d camera freea");
 
     // Define the camera to look into our 3d world
     Camera3D camera = { 0 };
@@ -181,7 +199,7 @@ int main(void)
      sphereMesh = GenMeshSphere(0.5f, 20, 20);
      sphereModel = LoadModelFromMesh(sphereMesh);
 
-    Shader shader = LoadShader(
+   shader = LoadShader(
         "Resources/lighting.vs",
         "Resources/lighting.fs"
     );
@@ -189,8 +207,11 @@ int main(void)
     cubeModel.materials[0].shader = shader;
     cubeModel.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = crateTex;
 
-    int viewPosLoc = GetShaderLocation(shader, "viewPos");
-    int ambientLoc = GetShaderLocation(shader, "ambient");
+    viewPosLoc = GetShaderLocation(shader, "viewPos");
+    ambientLoc = GetShaderLocation(shader, "ambient");
+    colDiffuseLocation = GetShaderLocation(shader, "colDiffuse");
+    scaleLoc = GetShaderLocation(shader, "scale");
+
     float ambient[4] = { 0.2f, 0.2f, 0.2f, 1.0f };
     SetShaderValue(shader, ambientLoc, ambient, SHADER_UNIFORM_VEC4);
 
@@ -200,6 +221,10 @@ int main(void)
     //--------------------------------------------------------------------------------------
 
     initSimulation();
+
+    Vector4 color;
+    color = { 1,0,0,1 };
+    Vector2 scale = { 2.0f, 2.0f };
 
     // Main game loop
     while (!WindowShouldClose())        // Detect window close button or ESC key
@@ -214,9 +239,10 @@ int main(void)
         SetShaderValue(
             shader,
             viewPosLoc,
-            &camera.position.x,
+            &camera.position,
             SHADER_UNIFORM_VEC3
         );
+
 
 
         if (IsKeyPressed(KEY_Z)) camera.target = { 0.0f, 0.0f, 0.0f };
