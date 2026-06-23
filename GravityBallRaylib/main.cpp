@@ -21,10 +21,6 @@ Vector3 toRayVec(GBVector3 v)
     return { v.y, v.z, v.x };
 }
 
-Vector3 toRayScale(GBVector3 v)
-{
-    return { v.y, v.z, v.x };
-}
 
 Quaternion toRayQuat(GBQuaternion q)
 {
@@ -37,7 +33,7 @@ Matrix makeTransform(
     GBVector3 scale)
 {
     Vector3 rayPos = toRayVec(position);
-    Vector3 rayScale = toRayScale(scale);
+    Vector3 rayScale = toRayVec(scale);
     Matrix S = MatrixScale(rayScale.x, rayScale.y, rayScale.z);
     Matrix R = QuaternionToMatrix(toRayQuat(rotation));
     Matrix T = MatrixTranslate(rayPos.x, rayPos.y, rayPos.z);
@@ -77,6 +73,7 @@ void initSimulation()
     pBody->angularVelocity = { 2,2,2 };
     pBody->transform.position = { 0,0,10 };
 
+
     pBody = simulation.createBody(1.0f, true);
     pBox = simulation.attachBoxCollider(pBody, { 20,20, 0.05f });
     pBox->pData = new RenderingMaterial({ 1,1,1});
@@ -86,10 +83,12 @@ void initSimulation()
 
 Mesh cubeMesh;
 Model cubeModel;
+Mesh sphereMesh;
+Model sphereModel;
 
 
 
-void drawBoxEdges(const GBBoxCollider& box)
+void drawBoxEdges(const GBBoxCollider& box, Color color = ORANGE)
 {
     Vector3 verts[8];
     for (int i = 0; i < 8; i++)
@@ -98,22 +97,26 @@ void drawBoxEdges(const GBBoxCollider& box)
     }
 
     // back face
-    DrawLine3D(verts[0], verts[1], GREEN);
-    DrawLine3D(verts[1], verts[2], GREEN);
-    DrawLine3D(verts[2], verts[3], GREEN);
-    DrawLine3D(verts[3], verts[0], GREEN);
+    DrawLine3D(verts[0], verts[1], color);
+    DrawLine3D(verts[1], verts[2], color);
+    DrawLine3D(verts[2], verts[3], color);
+    DrawLine3D(verts[3], verts[0], color);
+    DrawLine3D(verts[0], verts[2], color);
+    DrawLine3D(verts[1], verts[3], color);
 
     // front face
-    DrawLine3D(verts[4], verts[5], BLUE);
-    DrawLine3D(verts[5], verts[6], BLUE);
-    DrawLine3D(verts[6], verts[7], BLUE);
-    DrawLine3D(verts[7], verts[4], BLUE);
+    DrawLine3D(verts[4], verts[5], color);
+    DrawLine3D(verts[5], verts[6], color);
+    DrawLine3D(verts[6], verts[7], color);
+    DrawLine3D(verts[7], verts[4], color);
+    DrawLine3D(verts[4], verts[6], color);
+    DrawLine3D(verts[5], verts[7], color);
 
     // connections
-    DrawLine3D(verts[0], verts[4], GREEN);
-    DrawLine3D(verts[1], verts[5], GREEN);
-    DrawLine3D(verts[2], verts[6], GREEN);
-    DrawLine3D(verts[3], verts[7], GREEN);
+    DrawLine3D(verts[0], verts[4], color);
+    DrawLine3D(verts[1], verts[5], color);
+    DrawLine3D(verts[2], verts[6], color);
+    DrawLine3D(verts[3], verts[7], color);
 }
 
 void drawSimulation()
@@ -136,6 +139,8 @@ void drawSimulation()
                 pBox->setVerts();
                 pCol->pBody->updateColliders();
                 cubeModel.transform = makeTransform(pBox->transform.position, pBox->transform.rotation, 2.0f*pBox->halfExtents);
+
+
                 DrawModel(cubeModel, { 0,0,0 }, 1.0f, pMat->getColor());
                 drawBoxEdges(*pBox);
                 
@@ -167,20 +172,25 @@ int main(void)
     camera.up = { 0.0f, 1.0f, 0.0f };          // Camera up vector (rotation towards target)
     camera.fovy = 65.0f;                                // Camera field-of-view Y
     camera.projection = CAMERA_PERSPECTIVE;             // Camera projection type
+    Texture2D crateTex = LoadTexture("resources/crate-diffuse.jpg");
+    SetTextureWrap(crateTex, TEXTURE_WRAP_REPEAT);
+
 
     cubeMesh =  GenMeshCube(1.0f, 1.0f, 1.0f);
      cubeModel = LoadModelFromMesh(cubeMesh);
+     sphereMesh = GenMeshSphere(0.5f, 20, 20);
+     sphereModel = LoadModelFromMesh(sphereMesh);
 
     Shader shader = LoadShader(
-        "resources/shaders/glsl330/lighting.vs",
-        "resources/shaders/glsl330/lighting.fs"
+        "Resources/lighting.vs",
+        "Resources/lighting.fs"
     );
 
     cubeModel.materials[0].shader = shader;
+    cubeModel.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = crateTex;
 
     int viewPosLoc = GetShaderLocation(shader, "viewPos");
     int ambientLoc = GetShaderLocation(shader, "ambient");
-
     float ambient[4] = { 0.2f, 0.2f, 0.2f, 1.0f };
     SetShaderValue(shader, ambientLoc, ambient, SHADER_UNIFORM_VEC4);
 
@@ -219,16 +229,6 @@ int main(void)
         ClearBackground(RAYWHITE);
 
         BeginMode3D(camera);
-
-        //GBBody* pBoxBody = simulation.getBody(0);
-
-        //cubeModel.transform = makeTransform(pBoxBody->transform.position, pBoxBody->transform.rotation, { 1,1,1 });
-        //DrawModel(cubeModel,{0,0,0}, 1.0f, pBoxBody->isSleeping?BLUE:GREEN);
-
-        //pBoxBody = simulation.getBody(1);
-
-        //cubeModel.transform = makeTransform(pBoxBody->transform.position, pBoxBody->transform.rotation, { 20,20,0.05 });
-        //DrawModel(cubeModel, { 0,0,0 }, 1.0f, RED);
 
         drawSimulation();
 
