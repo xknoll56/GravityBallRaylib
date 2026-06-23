@@ -75,6 +75,11 @@ void initSimulation()
     pBody->angularVelocity = { 2,2,2 };
     pBody->transform.position = { 0,0,10 };
 
+    pBody = simulation.createBody();
+    GBSphereCollider* pSphere = simulation.attachSphereCollider(pBody, 0.65f);
+    pBody->transform.position = { 0,5,10 };
+    pSphere->pData = new RenderingMaterial({ 0.6,0.3,0.86 }, true, true);
+
 
     pBody = simulation.createBody(1.0f, true);
     pBox = simulation.attachBoxCollider(pBody, { 20,20, 0.05f });
@@ -93,6 +98,7 @@ int ambientLoc;
 int colDiffuseLocation;
 int scaleLoc;
 int useTextureLoc;
+int matModelLoc;
 
 Shader shader;
 
@@ -141,14 +147,34 @@ void drawSimulation()
             switch (pCol->type)
             {
             case ColliderType::Sphere:
+            {
                 pSphere = (GBSphereCollider*)pCol;
+                sphereModel.transform = makeTransform(pSphere->transform.position, pSphere->transform.rotation,
+                     GBVector3::uniformSize(pSphere->radius * 2.0f));
+                BeginShaderMode(shader);
+
+                int useTexture = pMat->useTexture;
+
+                SetShaderValue(
+                    shader,
+                    useTextureLoc,
+                    &useTexture,
+                    SHADER_UNIFORM_INT
+                );
+
+
+                DrawModel(sphereModel, { 0,0,0 }, 1.0f, pMat->getColor());
+                EndShaderMode();
+
                 break;
+            }
             case ColliderType::Box:
             {
                 pBox = (GBBoxCollider*)pCol;
                 pBox->setVerts();
                 pCol->pBody->updateColliders();
                 cubeModel.transform = makeTransform(pBox->transform.position, pBox->transform.rotation, 2.0f * pBox->halfExtents);
+                //SetShaderValueMatrix(shader, matModelLoc, cubeModel.transform);
                 float maxX = GBMax(pBox->halfExtents.x, pBox->halfExtents.y);
                 float maxY = GBMax(maxX, pBox->halfExtents.z);
                 Vector2 s = {2.0f*maxX, 2.0f*maxY };
@@ -229,6 +255,7 @@ int main(void)
     colDiffuseLocation = GetShaderLocation(shader, "colDiffuse");
     scaleLoc = GetShaderLocation(shader, "scale");
     useTextureLoc = GetShaderLocation(shader, "useTexture");
+    matModelLoc = GetShaderLocation(shader, "matModel");
 
     float ambient[4] = { 0.2f, 0.2f, 0.2f, 1.0f };
     SetShaderValue(shader, ambientLoc, ambient, SHADER_UNIFORM_VEC4);
