@@ -1713,14 +1713,14 @@ struct GBBoxCollider : public GBCollider {
 		GBVector3 up = transform.up();
 		GBVector3 right = transform.right();
 		GBVector3 forward = transform.forward();
-		vertices[0] = transform.position - (right * halfExtents.x) - (up * halfExtents.y) - (forward * halfExtents.z);
-		vertices[1] = transform.position + (right * halfExtents.x) - (up * halfExtents.y) - (forward * halfExtents.z);
-		vertices[2] = transform.position + (right * halfExtents.x) + (up * halfExtents.y) - (forward * halfExtents.z);
-		vertices[3] = transform.position - (right * halfExtents.x) + (up * halfExtents.y) - (forward * halfExtents.z);
-		vertices[4] = transform.position - (right * halfExtents.x) - (up * halfExtents.y) + (forward * halfExtents.z);
-		vertices[5] = transform.position + (right * halfExtents.x) - (up * halfExtents.y) + (forward * halfExtents.z);
-		vertices[6] = transform.position + (right * halfExtents.x) + (up * halfExtents.y) + (forward * halfExtents.z);
-		vertices[7] = transform.position - (right * halfExtents.x) + (up * halfExtents.y) + (forward * halfExtents.z);
+		vertices[0] = transform.position - (forward * halfExtents.x) - (right * halfExtents.y) - (up * halfExtents.z);
+		vertices[1] = transform.position + (forward * halfExtents.x) - (right * halfExtents.y) - (up * halfExtents.z);
+		vertices[2] = transform.position + (forward * halfExtents.x) + (right * halfExtents.y) - (up * halfExtents.z);
+		vertices[3] = transform.position - (forward * halfExtents.x) + (right * halfExtents.y) - (up * halfExtents.z);
+		vertices[4] = transform.position - (forward * halfExtents.x) - (right * halfExtents.y) + (up * halfExtents.z);
+		vertices[5] = transform.position + (forward * halfExtents.x) - (right * halfExtents.y) + (up * halfExtents.z);
+		vertices[6] = transform.position + (forward * halfExtents.x) + (right * halfExtents.y) + (up * halfExtents.z);
+		vertices[7] = transform.position - (forward * halfExtents.x) + (right * halfExtents.y) + (up * halfExtents.z);
 	}
 
 	GBBoxCollider()
