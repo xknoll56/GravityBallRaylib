@@ -1666,8 +1666,7 @@ struct GBSimulation
 	// ------------------------------------------------------------
 	void step(float deltaTime)
 	{
-
-		if (deltaTime > maxDeltaTime)
+		if (deltaTime > maxDeltaTime || deltaTime <= 0.0f)
 			deltaTime = maxDeltaTime;
 		deltaTime = timeScale * deltaTime;
 		float interDeltaTime = deltaTime / (float)solverIterations;

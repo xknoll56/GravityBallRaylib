@@ -69,30 +69,117 @@ struct RenderingMaterial
 
 void initSimulation()
 {
-    GBBody* pBody = simulation.createBody();
-    GBBoxCollider* pBox = simulation.attachBoxCollider(pBody, { 0.5f,0.5f,0.5f });
-    pBox->pData = new RenderingMaterial({ 0,1,1 }, true, true);
-    pBody->angularVelocity = { 2,2,2 };
-    pBody->transform.position = { 0,0,10 };
+    int playerLayer = 3;
 
-    pBody = simulation.createBody();
-    GBSphereCollider* pSphere = simulation.attachSphereCollider(pBody, 0.65f);
-    pBody->transform.position = { 0,5,10 };
-   pBody->angularVelocity = { 3.0f,3.0,1.0 };
-    pSphere->pData = new RenderingMaterial({ 0.1,0.3,0.86 }, true, false);
-
-    pBody = simulation.createBody();
-    GBCapsuleCollider* pCap = simulation.attachCapsuleCollider(pBody, 0.5f, 1.0f);
-    pBody->transform.position = { 0,-5, 10 };
-    pBody->transform.rotation = GBQuaternion::fromAxisAngle({ 1,1,2 }, 124.f);
-    pCap->pData = new RenderingMaterial({ 0.1,0.8,0.86 }, true, false);
+    {
+       GBBody* body = simulation.createBody();
+        body->transform.position = { 0,0,6 };
+        body->angularVelocity = { 100,10,10 };
+        body->velocity = { 10,10,10 };
+        body->layer = ~playerLayer;
+        GBCapsuleCollider* cc = simulation.attachCapsuleCollider(body, 0.25f, 0.8f);
+        cc->pData = new RenderingMaterial({ 1,1,1 }, true, false);
 
 
-    pBody = simulation.createBody(1.0f, true);
-    pBox = simulation.attachBoxCollider(pBody, { 20,20, 0.05f });
-    pBox->pData = new RenderingMaterial({ 1,1,1});
+        GBBody* arm1 = simulation.createBody();
+        GBCapsuleCollider* cc1 = simulation.attachCapsuleCollider(arm1, 0.1f, 0.45f);
+        arm1->transform.position = body->transform.position +
+            GBVector3::right() * (cc->radius + cc1->radius + cc1->height * 0.5f)
+            + GBVector3::up() * 0.25f;
+        arm1->transform.rotate(GBQuaternion::fromAxisAngle({ 1,0,0 }, GB_PI * 0.5f));
+        arm1->updateColliders();
+        arm1->layer = ~playerLayer;
+        cc1->pData = new RenderingMaterial({ 0,1,0 }, true, false);
+
+
+        GBBody* arm11 = simulation.createBody();
+        GBCapsuleCollider* cc11 = simulation.attachCapsuleCollider(arm11, 0.1f, 0.45f);
+        arm11->transform.position = arm1->transform.position + GBVector3::right() * (cc1->height * 0.5f + cc1->radius + cc11->height * 0.5f + cc11->radius);
+        arm11->transform.rotate(GBQuaternion::fromAxisAngle({ 1,0,0 }, GB_PI * 0.5f));
+        arm11->updateColliders();
+        arm11->layer = ~playerLayer;
+        cc11->pData = new RenderingMaterial({ 1,0,0 }, true, false);
+
+
+        GBBody* arm2 = simulation.createBody();
+        GBCapsuleCollider* cc2 = simulation.attachCapsuleCollider(arm2, 0.1f, 0.45f);
+        arm2->transform.position = body->transform.position -
+            GBVector3::right() * (cc->radius + cc2->radius + cc2->height * 0.5f)
+            + GBVector3::up() * 0.25f;
+        arm2->transform.rotate(GBQuaternion::fromAxisAngle({ 1,0,0 }, GB_PI * 0.5f));
+        arm2->updateColliders();
+        arm2->layer = ~playerLayer;
+        cc2->pData = new RenderingMaterial({ 0,1,0 }, true, false);
+
+        GBBody* arm22 = simulation.createBody();
+        GBCapsuleCollider* cc22 = simulation.attachCapsuleCollider(arm22, 0.1f, 0.45f);
+        arm22->transform.position = arm2->transform.position - GBVector3::right() * (cc2->height * 0.5f + cc2->radius + cc22->height * 0.5f + cc22->radius);
+        arm22->transform.rotate(GBQuaternion::fromAxisAngle({ 1,0,0 }, GB_PI * 0.5f));
+        arm22->updateColliders();
+        arm22->layer = ~playerLayer;
+        cc22->pData = new RenderingMaterial({ 1,0,0 }, true, false);
+
+
+        GBBody* leg = simulation.createBody();
+        GBCapsuleCollider* cc3 = simulation.attachCapsuleCollider(leg, 0.1f, 0.5f);
+        leg->transform.position = body->transform.position +
+            GBVector3::up() * (-cc->height * 0.5f - cc->radius - cc3->height * 0.5f - cc3->radius) +
+            GBVector3::right() * (cc3->radius);
+        leg->updateColliders();
+        leg->layer = ~playerLayer;
+        cc3->pData = new RenderingMaterial({ 0,1,1 }, true, false);
+
+        GBBody* foot = simulation.createBody();
+        GBCapsuleCollider* cc33 = simulation.attachCapsuleCollider(foot, 0.1f, 0.5);
+        foot->transform.position = leg->transform.position +
+            GBVector3::up() * (-cc3->height * 0.5f - cc3->radius - cc33->height * 0.5f - cc33->radius);
+        foot->updateColliders();
+        foot->layer = ~playerLayer;
+        cc33->pData = new RenderingMaterial({ 1,0,1 }, true, false);
+
+        GBBody* leg1 = simulation.createBody();
+        GBCapsuleCollider* cc4 = simulation.attachCapsuleCollider(leg1, 0.1f, 0.5);
+        leg1->transform.position = body->transform.position +
+            GBVector3::up() * (-cc->height * 0.5f - cc->radius - cc3->height * 0.5f - cc3->radius) +
+            GBVector3::left() * (cc3->radius);
+        leg1->updateColliders();
+        leg1->layer = ~playerLayer;
+        cc4->pData = new RenderingMaterial({ 0,1,1 }, true, false);
+
+        GBBody* foot1 = simulation.createBody();
+        GBCapsuleCollider* cc44 = simulation.attachCapsuleCollider(foot1, 0.1f, 0.5);
+        foot1->transform.position = leg1->transform.position +
+            GBVector3::up() * (-cc4->height * 0.5f - cc4->radius - cc44->height * 0.5f - cc44->radius);
+        foot1->updateColliders();
+        foot1->layer = ~playerLayer;
+        cc44->pData = new RenderingMaterial({ 1,0,1 }, true, false);
+
+        GBBody* head = simulation.createBody();
+        GBCapsuleCollider* cc5 = simulation.attachCapsuleCollider(head, 0.35f, 0.0f);
+        head->transform.position = body->transform.position +
+            GBVector3::up() * (cc->height * 0.5f + cc->radius + cc5->radius);
+        head->updateColliders();
+        head->layer = ~playerLayer;
+        cc5->pData = new RenderingMaterial({0,0,1 }, true, false);
+
+
+        GBBallJoint* s = simulation.attachCapsuleBallJoint(body, cc1);
+        s = simulation.attachCapsuleBallJoint(arm1, cc11);
+        s = simulation.attachCapsuleBallJoint(body, cc2);
+        s = simulation.attachCapsuleBallJoint(arm2, cc22);
+        s = simulation.attachCapsuleBallJoint(body, cc4);
+        s = simulation.attachCapsuleBallJoint(leg1, cc44);
+        s = simulation.attachCapsuleBallJoint(body, cc3);
+        s = simulation.attachCapsuleBallJoint(leg, cc33);
+        s = simulation.attachCapsuleBallJoint(body, cc5);
+    }
+
+    GBBody* pBody = simulation.createBody(1.0f, true);
+    GBBoxCollider* pBox = simulation.attachBoxCollider(pBody, { 20,20, 0.05f });
+    pBox->pData = new RenderingMaterial({ 1,1,1 });
     pBody->transform.position = { 0,0,-0.025 };
-    simulation.init();
+
+    //simulation.init();
 }
 
 Mesh cubeMesh;
@@ -143,7 +230,7 @@ void drawBoxEdges(const GBBoxCollider& box, Color color = ORANGE)
     DrawLine3D(verts[3], verts[7], color);
 }
 
-void drawSphereFrame(GBTransform sphereTrans, float radius, const RenderingMaterial& mat)
+void drawSphereFrame(GBTransform sphereTrans, float radius, const RenderingMaterial& mat, Color color)
 {
 
     for (int i = 0; i < 3; i++)
@@ -163,7 +250,7 @@ void drawSphereFrame(GBTransform sphereTrans, float radius, const RenderingMater
                 radius,
                 axis,
                 270.0f/GB_PI ,
-                GREEN
+                color
             );
         }
     }
@@ -214,7 +301,7 @@ void drawSimulation()
 
                     DrawModel(sphereModel, { 0,0,0 }, 1.0f, pMat->getColor());
                     
-                    drawSphereFrame(pSphere->transform, pSphere->radius, *pMat);
+                    drawSphereFrame(pSphere->transform, pSphere->radius, *pMat, pCol->pBody->isSleeping ? RED : GREEN);
 
                     break;
                 }
@@ -253,7 +340,7 @@ void drawSimulation()
                     EndShaderMode();
 
                     if (pMat->drawWireFrame)
-                        drawBoxEdges(*pBox);
+                        drawBoxEdges(*pBox, pCol->pBody->isSleeping?RED:GREEN);
 
                     break;
                 }
@@ -296,14 +383,14 @@ void drawSimulation()
                     DrawModel(sphereModel, { 0,0,0 }, 1.0f, pMat->getColor());
 
                     cylinderModel.transform = makeTransform(pCap->transform.position - up*pCap->height*0.5f, pCap->transform.rotation,
-                        {2.0f* pCap->radius, pCap->height, 2.0f*pCap->radius});
+                        {2.0f* pCap->radius, 2.0f*pCap->radius, pCap->height});
                     DrawModel(cylinderModel, { 0,0,0 }, 1.0f, pMat->getColor());
 
 
                     if (pMat->drawWireFrame)
                     {
-                        drawSphereFrame(GBTransform(lower), pCap->radius, *pMat);
-                        drawSphereFrame(GBTransform(upper), pCap->radius, *pMat);
+                        drawSphereFrame(GBTransform(lower), pCap->radius, *pMat, pCol->pBody->isSleeping?RED:GREEN);
+                        drawSphereFrame(GBTransform(upper), pCap->radius, *pMat, pCol->pBody->isSleeping ? RED : GREEN);
                     }
 
                     break;
@@ -383,7 +470,8 @@ int main(void)
     while (!WindowShouldClose())        // Detect window close button or ESC key
     {
         float dt = GetFrameTime();
-
+        if (dt > 1.0f / 60.0f)
+            dt = 1.0f / 60.0f;
         simulation.step(dt);
         // Update
         //----------------------------------------------------------------------------------
