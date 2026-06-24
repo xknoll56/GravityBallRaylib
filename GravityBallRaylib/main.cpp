@@ -69,6 +69,17 @@ struct RenderingMaterial
 
 void initSimulation()
 {
+    const static int numBoxes = 5;
+    for (int i = 0; i < numBoxes; i++)
+    {
+        for (int j = 0; j < numBoxes; j++)
+        {
+            GBBody* pBody = simulation.createBody();
+            GBBoxCollider* pBox = simulation.attachBoxCollider(pBody, { 0.5f,0.5f,0.5f });
+            pBox->pData = new RenderingMaterial(GBVector3(i%2,i+1%2,i+2%2 ), true, false);
+            pBody->transform.position = { 5,i*1.05f,1 + j*1.05f };
+        }
+    }
     int playerLayer = 3;
 
     {
