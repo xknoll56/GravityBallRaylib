@@ -46,6 +46,25 @@ Matrix makeTransform(
 
 GBSimulation simulation;
 
+Mesh cubeMesh;
+Model cubeModel;
+Mesh sphereMesh;
+Model sphereModel;
+Mesh cylinderMesh;
+Model cylinderModel;
+
+int viewPosLoc;
+int ambientLoc;
+int colDiffuseLocation;
+int scaleLoc;
+int useTextureLoc;
+int matModelLoc;
+
+Shader shader;
+
+Material createMat;
+Material createMat1;
+
 struct RenderingMaterial
 {
     GBVector3 color = { 1.0f,1.0f,1.0f };
@@ -194,22 +213,6 @@ void initSimulation()
     //simulation.init();
 }
 
-Mesh cubeMesh;
-Model cubeModel;
-Mesh sphereMesh;
-Model sphereModel;
-Mesh cylinderMesh;
-Model cylinderModel;
-
-int viewPosLoc;
-int ambientLoc;
-int colDiffuseLocation;
-int scaleLoc;
-int useTextureLoc;
-int matModelLoc;
-
-Shader shader;
-
 
 void drawBoxEdges(const GBBoxCollider& box, Color color = ORANGE)
 {
@@ -325,18 +328,18 @@ void drawSimulation()
                     // But this function is left over and still may be useful.
                     pBox->setVerts();
                     pCol->pBody->updateColliders();
+                    cubeModel.materials[0] = createMat;
+
                     cubeModel.transform = makeTransform(pBox->transform.position, pBox->transform.rotation, 2.0f * pBox->halfExtents);
                     float maxX = GBMax(pBox->halfExtents.x, pBox->halfExtents.y);
                     float maxY = GBMax(maxX, pBox->halfExtents.z);
-                    Vector2 s = Vector2Scale({ 2.0f * maxX, 2.0f * maxY }, 0.25f);
+                    Vector2 s = Vector2Scale({ 2.0f * maxX, 2.0f * maxY }, 0.2f);
                     SetShaderValue(
                         shader,
                         scaleLoc,
                         &s,
                         SHADER_UNIFORM_VEC2
                     );
-
-                    BeginShaderMode(shader);
 
                     int useTexture = pMat->useTexture;
 
@@ -346,6 +349,8 @@ void drawSimulation()
                         &useTexture,
                         SHADER_UNIFORM_INT
                     );
+
+                    
 
 
                     DrawModel(cubeModel, { 0,0,0 }, 1.0f, pMat->getColor());
@@ -434,7 +439,9 @@ int main(void)
     camera.fovy = 65.0f;                                // Camera field-of-view Y
     camera.projection = CAMERA_PERSPECTIVE;             // Camera projection type
     Texture2D crateTex = LoadTexture("resources/texture_Space_station_Box.jpg");
+    Texture2D crateTex1 = LoadTexture("resources/crate-diffuse.jpg");
     SetTextureWrap(crateTex, TEXTURE_WRAP_REPEAT);
+    SetTextureWrap(crateTex1, TEXTURE_WRAP_REPEAT);
 
 
     cubeMesh =  GenMeshCube(1.0f, 1.0f, 1.0f);
@@ -450,12 +457,16 @@ int main(void)
         "Resources/lighting.fs"
     );
 
-    cubeModel.materials[0].shader = shader;
-    cubeModel.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = crateTex;
-    sphereModel.materials[0].shader = shader;
-    sphereModel.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = crateTex;
-    cylinderModel.materials[0].shader = shader;
-    cylinderModel.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = crateTex;
+   createMat = LoadMaterialDefault();
+   createMat.shader = shader;
+   createMat.maps[MATERIAL_MAP_DIFFUSE].texture = crateTex;
+   createMat1 = LoadMaterialDefault();
+   createMat1.shader = shader;
+   createMat1.maps[MATERIAL_MAP_DIFFUSE].texture = crateTex1;
+
+   cubeModel.materials[0] = createMat;
+   sphereModel.materials[0] = createMat;
+   cylinderModel.materials[0] = createMat;
 
     viewPosLoc = GetShaderLocation(shader, "viewPos");
     ambientLoc = GetShaderLocation(shader, "ambient");
