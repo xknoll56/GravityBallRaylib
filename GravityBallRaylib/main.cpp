@@ -85,7 +85,7 @@ void initSimulation()
     GBCapsuleCollider* pCap = simulation.attachCapsuleCollider(pBody, 0.5f, 1.0f);
     pBody->transform.position = { 0,-5, 10 };
     pBody->transform.rotation = GBQuaternion::fromAxisAngle({ 1,1,2 }, 124.f);
-    pCap->pData = new RenderingMaterial({ 0.1,0.8,0.86 }, false, false);
+    pCap->pData = new RenderingMaterial({ 0.1,0.8,0.86 }, true, false);
 
 
     pBody = simulation.createBody(1.0f, true);
@@ -143,7 +143,7 @@ void drawBoxEdges(const GBBoxCollider& box, Color color = ORANGE)
     DrawLine3D(verts[3], verts[7], color);
 }
 
-void drawSphereFrame(GBSphereCollider& sphere, const RenderingMaterial& mat)
+void drawSphereFrame(GBTransform sphereTrans, float radius, const RenderingMaterial& mat)
 {
 
     for (int i = 0; i < 3; i++)
@@ -159,8 +159,8 @@ void drawSphereFrame(GBSphereCollider& sphere, const RenderingMaterial& mat)
         if (mat.drawWireFrame)
         {
             DrawCircle3D(
-                toRayVec(sphere.transform.position),
-                sphere.radius,
+                toRayVec(sphereTrans.position),
+                radius,
                 axis,
                 270.0f/GB_PI ,
                 GREEN
@@ -214,13 +214,16 @@ void drawSimulation()
 
                     DrawModel(sphereModel, { 0,0,0 }, 1.0f, pMat->getColor());
                     
-                    drawSphereFrame(*pSphere, *pMat);
+                    drawSphereFrame(pSphere->transform, pSphere->radius, *pMat);
 
                     break;
                 }
                 case ColliderType::Box:
                 {
                     pBox = (GBBoxCollider*)pCol;
+
+                    // Setting the verts of the box does not happen everyframe, instead boxes convert to quads which get the positions anyway
+                    // But this function is left over and still may be useful.
                     pBox->setVerts();
                     pCol->pBody->updateColliders();
                     cubeModel.transform = makeTransform(pBox->transform.position, pBox->transform.rotation, 2.0f * pBox->halfExtents);
@@ -295,6 +298,13 @@ void drawSimulation()
                     cylinderModel.transform = makeTransform(pCap->transform.position - up*pCap->height*0.5f, pCap->transform.rotation,
                         {2.0f* pCap->radius, pCap->height, 2.0f*pCap->radius});
                     DrawModel(cylinderModel, { 0,0,0 }, 1.0f, pMat->getColor());
+
+
+                    if (pMat->drawWireFrame)
+                    {
+                        drawSphereFrame(GBTransform(lower), pCap->radius, *pMat);
+                        drawSphereFrame(GBTransform(upper), pCap->radius, *pMat);
+                    }
 
                     break;
                 }
