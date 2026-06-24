@@ -134,6 +134,16 @@
     <None Include="Resources\lighting.fs" />
     <None Include="Resources\lighting.vs" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\GravityBallPhysics\src\GBAABB.h" />
+    <ClInclude Include="..\GravityBallPhysics\src\GBCollider.h" />
+    <ClInclude Include="..\GravityBallPhysics\src\GBGrid.h" />
+    <ClInclude Include="..\GravityBallPhysics\src\GBInclude.h" />
+    <ClInclude Include="..\GravityBallPhysics\src\GBManifoldGeneration.h" />
+    <ClInclude Include="..\GravityBallPhysics\src\GBMath.h" />
+    <ClInclude Include="..\GravityBallPhysics\src\GBSimulation.h" />
+    <ClInclude Include="..\GravityBallPhysics\src\GBTransform.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="..\packages\raylib.5.5.0\build\native\raylib.targets" Condition="Exists('..\packages\raylib.5.5.0\build\native\raylib.targets')" />
