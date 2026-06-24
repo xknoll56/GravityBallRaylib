@@ -162,7 +162,7 @@ void drawSphereFrame(GBSphereCollider& sphere, const RenderingMaterial& mat)
                 toRayVec(sphere.transform.position),
                 sphere.radius,
                 axis,
-                360.0f/GB_PI ,
+                270.0f/GB_PI ,
                 GREEN
             );
         }
