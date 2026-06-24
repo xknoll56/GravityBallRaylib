@@ -51,6 +51,7 @@ struct RenderingMaterial
     GBVector3 color = { 1.0f,1.0f,1.0f };
     bool drawWireFrame = false;
     bool useTexture = false;
+    float textureScale = 1.0f;
     RenderingMaterial(GBVector3 col, bool drawWireFrame = false, bool useTexture = false) :
         color(col) , drawWireFrame(drawWireFrame), useTexture(useTexture)
     {
@@ -77,7 +78,7 @@ void initSimulation()
             GBBody* pBody = simulation.createBody();
             GBBoxCollider* pBox = simulation.attachBoxCollider(pBody, { 0.5f,0.5f,0.5f });
             pBox->pData = new RenderingMaterial(GBVector3(i%2,i+1%2,i+2%2 ), true, false);
-            pBody->transform.position = { 5,i*1.05f,1 + j*1.05f };
+            pBody->transform.position = { 5,i*1.0f,1 + j*1.0f };
         }
     }
     int playerLayer = 3;
@@ -187,7 +188,7 @@ void initSimulation()
 
     GBBody* pBody = simulation.createBody(1.0f, true);
     GBBoxCollider* pBox = simulation.attachBoxCollider(pBody, { 20,20, 0.05f });
-    pBox->pData = new RenderingMaterial({ 1,1,1 });
+    pBox->pData = new RenderingMaterial({ 1,1,1 }, true, true);
     pBody->transform.position = { 0,0,-0.025 };
 
     //simulation.init();
@@ -327,7 +328,7 @@ void drawSimulation()
                     cubeModel.transform = makeTransform(pBox->transform.position, pBox->transform.rotation, 2.0f * pBox->halfExtents);
                     float maxX = GBMax(pBox->halfExtents.x, pBox->halfExtents.y);
                     float maxY = GBMax(maxX, pBox->halfExtents.z);
-                    Vector2 s = { 2.0f * maxX, 2.0f * maxY };
+                    Vector2 s = Vector2Scale({ 2.0f * maxX, 2.0f * maxY }, 0.25f);
                     SetShaderValue(
                         shader,
                         scaleLoc,
@@ -432,7 +433,7 @@ int main(void)
     camera.up = { 0.0f, 1.0f, 0.0f };          // Camera up vector (rotation towards target)
     camera.fovy = 65.0f;                                // Camera field-of-view Y
     camera.projection = CAMERA_PERSPECTIVE;             // Camera projection type
-    Texture2D crateTex = LoadTexture("resources/crate-diffuse.jpg");
+    Texture2D crateTex = LoadTexture("resources/texture_Space_station_Box.jpg");
     SetTextureWrap(crateTex, TEXTURE_WRAP_REPEAT);
 
 

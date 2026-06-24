@@ -45,7 +45,7 @@ void main()
     float useTex = float(useTexture);
     
     vec4 sampled = texture2D(texture0, fragTexCoord);
-    vec4 texelColor = mix(sampled * colDiffuse, colDiffuse, useTex);
+    vec4 texelColor = mix(sampled * colDiffuse, colDiffuse, 1.0f-useTex);
     vec3 lightDot = vec3(0.0);
     vec3 normal = normalize(fragNormal);
     vec3 viewD = normalize(viewPos - fragPosition);
