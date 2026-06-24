@@ -62,8 +62,9 @@ int matModelLoc;
 
 Shader shader;
 
-Material createMat;
-Material createMat1;
+static const int NUM_MATERIALS = 10;
+Material materials[NUM_MATERIALS];
+
 
 struct RenderingMaterial
 {
@@ -71,8 +72,9 @@ struct RenderingMaterial
     bool drawWireFrame = false;
     bool useTexture = false;
     float textureScale = 1.0f;
-    RenderingMaterial(GBVector3 col, bool drawWireFrame = false, bool useTexture = false) :
-        color(col) , drawWireFrame(drawWireFrame), useTexture(useTexture)
+    int materialIndex = 0;
+    RenderingMaterial(GBVector3 col, bool drawWireFrame = false, bool useTexture = false, int materialIndex = 0, float textureScale = 1.0f) :
+        color(col) , drawWireFrame(drawWireFrame), useTexture(useTexture),  materialIndex(materialIndex), textureScale(textureScale)
     {
     }
 
@@ -96,7 +98,7 @@ void initSimulation()
         {
             GBBody* pBody = simulation.createBody();
             GBBoxCollider* pBox = simulation.attachBoxCollider(pBody, { 0.5f,0.5f,0.5f });
-            pBox->pData = new RenderingMaterial(GBVector3(i%2,i+1%2,i+2%2 ), true, false);
+            pBox->pData = new RenderingMaterial(GBVector3(i%2,i+1%2,i+2%2 ), true, true, 1, 1.0f);
             pBody->transform.position = { 5,i*1.0f,1 + j*1.0f };
         }
     }
@@ -207,7 +209,7 @@ void initSimulation()
 
     GBBody* pBody = simulation.createBody(1.0f, true);
     GBBoxCollider* pBox = simulation.attachBoxCollider(pBody, { 20,20, 0.05f });
-    pBox->pData = new RenderingMaterial({ 1,1,1 }, true, true);
+    pBox->pData = new RenderingMaterial({ 1,1,1 }, true, true, 0, 0.1f);
     pBody->transform.position = { 0,0,-0.025 };
 
     //simulation.init();
@@ -293,8 +295,8 @@ void drawSimulation()
                     pSphere = (GBSphereCollider*)pCol;
                     sphereModel.transform = makeTransform(pSphere->transform.position, pSphere->transform.rotation,
                         GBVector3::uniformSize(pSphere->radius * 2.0f));
-
-                    Vector2 s = { 2.0f , 2.0f };
+                    sphereModel.materials[0] = materials[pMat->materialIndex];
+                    Vector2 s = Vector2Scale({ 2.0f , 2.0f }, pMat->textureScale);
                     SetShaderValue(
                         shader,
                         scaleLoc,
@@ -328,12 +330,12 @@ void drawSimulation()
                     // But this function is left over and still may be useful.
                     pBox->setVerts();
                     pCol->pBody->updateColliders();
-                    cubeModel.materials[0] = createMat;
+                    cubeModel.materials[0] = materials[pMat->materialIndex];
 
                     cubeModel.transform = makeTransform(pBox->transform.position, pBox->transform.rotation, 2.0f * pBox->halfExtents);
                     float maxX = GBMax(pBox->halfExtents.x, pBox->halfExtents.y);
                     float maxY = GBMax(maxX, pBox->halfExtents.z);
-                    Vector2 s = Vector2Scale({ 2.0f * maxX, 2.0f * maxY }, 0.2f);
+                    Vector2 s = Vector2Scale({ 2.0f * maxX, 2.0f * maxY }, pMat->textureScale);
                     SetShaderValue(
                         shader,
                         scaleLoc,
@@ -384,12 +386,13 @@ void drawSimulation()
                         SHADER_UNIFORM_INT
                     );
 
+                    sphereModel.materials[0] = materials[pMat->materialIndex];
+                    cylinderModel.materials[0] = materials[pMat->materialIndex];
 
                     GBVector3 upper, lower, up;
                     pCap->extractSphereLocations(upper, lower, &up);
                     sphereModel.transform = makeTransform(upper, pCap->transform.rotation,
                         GBVector3::uniformSize(pCap->radius * 2.0f));
-
 
                     DrawModel(sphereModel, { 0,0,0 }, 1.0f, pMat->getColor());
 
@@ -438,7 +441,7 @@ int main(void)
     camera.up = { 0.0f, 1.0f, 0.0f };          // Camera up vector (rotation towards target)
     camera.fovy = 65.0f;                                // Camera field-of-view Y
     camera.projection = CAMERA_PERSPECTIVE;             // Camera projection type
-    Texture2D crateTex = LoadTexture("resources/texture_Space_station_Box.jpg");
+    Texture2D crateTex = LoadTexture("resources/space_platform_texture.jpg");
     Texture2D crateTex1 = LoadTexture("resources/crate-diffuse.jpg");
     SetTextureWrap(crateTex, TEXTURE_WRAP_REPEAT);
     SetTextureWrap(crateTex1, TEXTURE_WRAP_REPEAT);
@@ -457,16 +460,17 @@ int main(void)
         "Resources/lighting.fs"
     );
 
-   createMat = LoadMaterialDefault();
-   createMat.shader = shader;
-   createMat.maps[MATERIAL_MAP_DIFFUSE].texture = crateTex;
-   createMat1 = LoadMaterialDefault();
-   createMat1.shader = shader;
-   createMat1.maps[MATERIAL_MAP_DIFFUSE].texture = crateTex1;
+   for (int i = 0; i < NUM_MATERIALS; i++)
+   {
+       materials[i] = LoadMaterialDefault();
+       materials[i].shader = shader;
+   }
+   materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = crateTex;
+   materials[1].maps[MATERIAL_MAP_DIFFUSE].texture = crateTex1;
 
-   cubeModel.materials[0] = createMat;
-   sphereModel.materials[0] = createMat;
-   cylinderModel.materials[0] = createMat;
+   cubeModel.materials[0] = materials[0];
+   sphereModel.materials[0] = materials[0];
+   cylinderModel.materials[0] = materials[0];
 
     viewPosLoc = GetShaderLocation(shader, "viewPos");
     ambientLoc = GetShaderLocation(shader, "ambient");
