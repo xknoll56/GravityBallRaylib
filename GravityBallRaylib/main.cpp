@@ -19,40 +19,40 @@
 
 Vector3 toRayVec(GBVector3 v)
 {
-    return { v.y, v.z, v.x };
+	return { v.y, v.z, v.x };
 }
 
 GBVector3 toGBVec(Vector3 v)
 {
-    return { v.z, v.x, v.y };
+	return { v.z, v.x, v.y };
 }
 
 GBVector3 getCameraFwd(const Camera& camera)
 {
-    return toGBVec(Vector3Subtract(camera.target, camera.position)).normalized();
+	return toGBVec(Vector3Subtract(camera.target, camera.position)).normalized();
 }
 
 
 Quaternion toRayQuat(GBQuaternion q)
 {
-    return { q.y, q.z, q.x, q.w };
+	return { q.y, q.z, q.x, q.w };
 }
 
 Matrix makeTransform(
-    GBVector3 position,
-    GBQuaternion rotation,
-    GBVector3 scale)
+	GBVector3 position,
+	GBQuaternion rotation,
+	GBVector3 scale)
 {
-    Vector3 rayPos = toRayVec(position);
-    Vector3 rayScale = toRayVec(scale);
-    Matrix S = MatrixScale(rayScale.x, rayScale.y, rayScale.z);
-    Matrix R = QuaternionToMatrix(toRayQuat(rotation));
-    Matrix T = MatrixTranslate(rayPos.x, rayPos.y, rayPos.z);
+	Vector3 rayPos = toRayVec(position);
+	Vector3 rayScale = toRayVec(scale);
+	Matrix S = MatrixScale(rayScale.x, rayScale.y, rayScale.z);
+	Matrix R = QuaternionToMatrix(toRayQuat(rotation));
+	Matrix T = MatrixTranslate(rayPos.x, rayPos.y, rayPos.z);
 
-    return MatrixMultiply(
-        MatrixMultiply(S, R),
-        T
-    );
+	return MatrixMultiply(
+		MatrixMultiply(S, R),
+		T
+	);
 }
 
 GBSimulation simulation;
@@ -79,368 +79,421 @@ Material materials[NUM_MATERIALS];
 
 struct RenderingMaterial
 {
-    GBVector3 color = { 1.0f,1.0f,1.0f };
-    bool drawWireFrame = false;
-    bool useTexture = false;
-    float textureScale = 1.0f;
-    int materialIndex = 0;
-    bool doRender = true;
-    RenderingMaterial(GBVector3 col, bool drawWireFrame = false, 
-        bool useTexture = false, int materialIndex = 0, float textureScale = 1.0f, bool doRender = true) :
-        color(col) , drawWireFrame(drawWireFrame), useTexture(useTexture), 
-        materialIndex(materialIndex), textureScale(textureScale), doRender(doRender)
-    {
-    }
+	GBVector3 color = { 1.0f,1.0f,1.0f };
+	bool drawWireFrame = false;
+	bool useTexture = false;
+	float textureScale = 1.0f;
+	int materialIndex = 0;
+	bool doRender = true;
+	RenderingMaterial(GBVector3 col, bool drawWireFrame = false,
+		bool useTexture = false, int materialIndex = 0, float textureScale = 1.0f, bool doRender = true) :
+		color(col), drawWireFrame(drawWireFrame), useTexture(useTexture),
+		materialIndex(materialIndex), textureScale(textureScale), doRender(doRender)
+	{
+	}
 
-    Color getColor()
-    {
-        Color c;
-        c.r = color.x * 255;
-        c.g = color.y * 255;
-        c.b = color.z * 255;
-        c.a = 255;
-        return c;
-    }
+	Color getColor()
+	{
+		Color c;
+		c.r = color.x * 255;
+		c.g = color.y * 255;
+		c.b = color.z * 255;
+		c.a = 255;
+		return c;
+	}
 };
 
 GBBody* playerBody;
 
 void initSimulation()
 {
-    const static int numBoxes = 5;
-    for (int i = 0; i < numBoxes; i++)
-    {
-        for (int j = 0; j < numBoxes; j++)
-        {
-            GBBody* pBody = simulation.createBody();
-            GBBoxCollider* pBox = simulation.attachBoxCollider(pBody, { 0.5f,0.5f,0.5f });
-            pBox->pData = new RenderingMaterial(GBVector3(i%2,i+1%2,i+2%2 ), true, true, 1, 1.0f);
-            pBody->transform.position = { 5,i*1.0f,1 + j*1.0f };
-        }
-    }
-    int playerLayer = 3;
+	const static int numBoxes = 5;
+	for (int i = 0; i < numBoxes; i++)
+	{
+		for (int j = 0; j < numBoxes; j++)
+		{
+			GBBody* pBody = simulation.createBody();
+			GBBoxCollider* pBox = simulation.attachBoxCollider(pBody, { 0.5f,0.5f,0.5f });
+			pBox->pData = new RenderingMaterial(GBVector3(i % 2, i + 1 % 2, i + 2 % 2), true, true, 1, 1.0f);
+			pBody->transform.position = { 5,i * 1.0f,1 + j * 1.0f };
+		}
+	}
+	int playerLayer = 3;
 
-    {
-       GBBody* body = simulation.createBody();
-        body->transform.position = { 0,0,6 };
-        body->angularVelocity = { 100,10,10 };
-        body->velocity = { 10,10,10 };
-        body->layer = ~playerLayer;
-        GBCapsuleCollider* cc = simulation.attachCapsuleCollider(body, 0.25f, 0.8f);
-        cc->pData = new RenderingMaterial({ 1,1,1 }, true, false);
-
-
-        GBBody* arm1 = simulation.createBody();
-        GBCapsuleCollider* cc1 = simulation.attachCapsuleCollider(arm1, 0.1f, 0.45f);
-        arm1->transform.position = body->transform.position +
-            GBVector3::right() * (cc->radius + cc1->radius + cc1->height * 0.5f)
-            + GBVector3::up() * 0.25f;
-        arm1->transform.rotate(GBQuaternion::fromAxisAngle({ 1,0,0 }, GB_PI * 0.5f));
-        arm1->updateColliders();
-        arm1->layer = ~playerLayer;
-        cc1->pData = new RenderingMaterial({ 0,1,0 }, true, false);
+	{
+		GBBody* body = simulation.createBody();
+		body->transform.position = { 0,0,6 };
+		body->angularVelocity = { 100,10,10 };
+		body->velocity = { 10,10,10 };
+		body->layer = ~playerLayer;
+		GBCapsuleCollider* cc = simulation.attachCapsuleCollider(body, 0.25f, 0.8f);
+		cc->pData = new RenderingMaterial({ 1,1,1 }, true, false);
 
 
-        GBBody* arm11 = simulation.createBody();
-        GBCapsuleCollider* cc11 = simulation.attachCapsuleCollider(arm11, 0.1f, 0.45f);
-        arm11->transform.position = arm1->transform.position + GBVector3::right() * (cc1->height * 0.5f + cc1->radius + cc11->height * 0.5f + cc11->radius);
-        arm11->transform.rotate(GBQuaternion::fromAxisAngle({ 1,0,0 }, GB_PI * 0.5f));
-        arm11->updateColliders();
-        arm11->layer = ~playerLayer;
-        cc11->pData = new RenderingMaterial({ 1,0,0 }, true, false);
+		GBBody* arm1 = simulation.createBody();
+		GBCapsuleCollider* cc1 = simulation.attachCapsuleCollider(arm1, 0.1f, 0.45f);
+		arm1->transform.position = body->transform.position +
+			GBVector3::right() * (cc->radius + cc1->radius + cc1->height * 0.5f)
+			+ GBVector3::up() * 0.25f;
+		arm1->transform.rotate(GBQuaternion::fromAxisAngle({ 1,0,0 }, GB_PI * 0.5f));
+		arm1->updateColliders();
+		arm1->layer = ~playerLayer;
+		cc1->pData = new RenderingMaterial({ 0,1,0 }, true, false);
 
 
-        GBBody* arm2 = simulation.createBody();
-        GBCapsuleCollider* cc2 = simulation.attachCapsuleCollider(arm2, 0.1f, 0.45f);
-        arm2->transform.position = body->transform.position -
-            GBVector3::right() * (cc->radius + cc2->radius + cc2->height * 0.5f)
-            + GBVector3::up() * 0.25f;
-        arm2->transform.rotate(GBQuaternion::fromAxisAngle({ 1,0,0 }, GB_PI * 0.5f));
-        arm2->updateColliders();
-        arm2->layer = ~playerLayer;
-        cc2->pData = new RenderingMaterial({ 0,1,0 }, true, false);
-
-        GBBody* arm22 = simulation.createBody();
-        GBCapsuleCollider* cc22 = simulation.attachCapsuleCollider(arm22, 0.1f, 0.45f);
-        arm22->transform.position = arm2->transform.position - GBVector3::right() * (cc2->height * 0.5f + cc2->radius + cc22->height * 0.5f + cc22->radius);
-        arm22->transform.rotate(GBQuaternion::fromAxisAngle({ 1,0,0 }, GB_PI * 0.5f));
-        arm22->updateColliders();
-        arm22->layer = ~playerLayer;
-        cc22->pData = new RenderingMaterial({ 1,0,0 }, true, false);
+		GBBody* arm11 = simulation.createBody();
+		GBCapsuleCollider* cc11 = simulation.attachCapsuleCollider(arm11, 0.1f, 0.45f);
+		arm11->transform.position = arm1->transform.position + GBVector3::right() * (cc1->height * 0.5f + cc1->radius + cc11->height * 0.5f + cc11->radius);
+		arm11->transform.rotate(GBQuaternion::fromAxisAngle({ 1,0,0 }, GB_PI * 0.5f));
+		arm11->updateColliders();
+		arm11->layer = ~playerLayer;
+		cc11->pData = new RenderingMaterial({ 1,0,0 }, true, false);
 
 
-        GBBody* leg = simulation.createBody();
-        GBCapsuleCollider* cc3 = simulation.attachCapsuleCollider(leg, 0.1f, 0.5f);
-        leg->transform.position = body->transform.position +
-            GBVector3::up() * (-cc->height * 0.5f - cc->radius - cc3->height * 0.5f - cc3->radius) +
-            GBVector3::right() * (cc3->radius);
-        leg->updateColliders();
-        leg->layer = ~playerLayer;
-        cc3->pData = new RenderingMaterial({ 0,1,1 }, true, false);
+		GBBody* arm2 = simulation.createBody();
+		GBCapsuleCollider* cc2 = simulation.attachCapsuleCollider(arm2, 0.1f, 0.45f);
+		arm2->transform.position = body->transform.position -
+			GBVector3::right() * (cc->radius + cc2->radius + cc2->height * 0.5f)
+			+ GBVector3::up() * 0.25f;
+		arm2->transform.rotate(GBQuaternion::fromAxisAngle({ 1,0,0 }, GB_PI * 0.5f));
+		arm2->updateColliders();
+		arm2->layer = ~playerLayer;
+		cc2->pData = new RenderingMaterial({ 0,1,0 }, true, false);
 
-        GBBody* foot = simulation.createBody();
-        GBCapsuleCollider* cc33 = simulation.attachCapsuleCollider(foot, 0.1f, 0.5);
-        foot->transform.position = leg->transform.position +
-            GBVector3::up() * (-cc3->height * 0.5f - cc3->radius - cc33->height * 0.5f - cc33->radius);
-        foot->updateColliders();
-        foot->layer = ~playerLayer;
-        cc33->pData = new RenderingMaterial({ 1,0,1 }, true, false);
-
-        GBBody* leg1 = simulation.createBody();
-        GBCapsuleCollider* cc4 = simulation.attachCapsuleCollider(leg1, 0.1f, 0.5);
-        leg1->transform.position = body->transform.position +
-            GBVector3::up() * (-cc->height * 0.5f - cc->radius - cc3->height * 0.5f - cc3->radius) +
-            GBVector3::left() * (cc3->radius);
-        leg1->updateColliders();
-        leg1->layer = ~playerLayer;
-        cc4->pData = new RenderingMaterial({ 0,1,1 }, true, false);
-
-        GBBody* foot1 = simulation.createBody();
-        GBCapsuleCollider* cc44 = simulation.attachCapsuleCollider(foot1, 0.1f, 0.5);
-        foot1->transform.position = leg1->transform.position +
-            GBVector3::up() * (-cc4->height * 0.5f - cc4->radius - cc44->height * 0.5f - cc44->radius);
-        foot1->updateColliders();
-        foot1->layer = ~playerLayer;
-        cc44->pData = new RenderingMaterial({ 1,0,1 }, true, false);
-
-        GBBody* head = simulation.createBody();
-        GBCapsuleCollider* cc5 = simulation.attachCapsuleCollider(head, 0.35f, 0.0f);
-        head->transform.position = body->transform.position +
-            GBVector3::up() * (cc->height * 0.5f + cc->radius + cc5->radius);
-        head->updateColliders();
-        head->layer = ~playerLayer;
-        cc5->pData = new RenderingMaterial({0,0,1 }, true, false);
+		GBBody* arm22 = simulation.createBody();
+		GBCapsuleCollider* cc22 = simulation.attachCapsuleCollider(arm22, 0.1f, 0.45f);
+		arm22->transform.position = arm2->transform.position - GBVector3::right() * (cc2->height * 0.5f + cc2->radius + cc22->height * 0.5f + cc22->radius);
+		arm22->transform.rotate(GBQuaternion::fromAxisAngle({ 1,0,0 }, GB_PI * 0.5f));
+		arm22->updateColliders();
+		arm22->layer = ~playerLayer;
+		cc22->pData = new RenderingMaterial({ 1,0,0 }, true, false);
 
 
-        GBBallJoint* s = simulation.attachCapsuleBallJoint(body, cc1);
-        s = simulation.attachCapsuleBallJoint(arm1, cc11);
-        s = simulation.attachCapsuleBallJoint(body, cc2);
-        s = simulation.attachCapsuleBallJoint(arm2, cc22);
-        s = simulation.attachCapsuleBallJoint(body, cc4);
-        s = simulation.attachCapsuleBallJoint(leg1, cc44);
-        s = simulation.attachCapsuleBallJoint(body, cc3);
-        s = simulation.attachCapsuleBallJoint(leg, cc33);
-        s = simulation.attachCapsuleBallJoint(body, cc5);
-    }
+		GBBody* leg = simulation.createBody();
+		GBCapsuleCollider* cc3 = simulation.attachCapsuleCollider(leg, 0.1f, 0.5f);
+		leg->transform.position = body->transform.position +
+			GBVector3::up() * (-cc->height * 0.5f - cc->radius - cc3->height * 0.5f - cc3->radius) +
+			GBVector3::right() * (cc3->radius);
+		leg->updateColliders();
+		leg->layer = ~playerLayer;
+		cc3->pData = new RenderingMaterial({ 0,1,1 }, true, false);
 
-    GBBody* pBody = simulation.createBody(1.0f, true);
-    GBBoxCollider* pBox = simulation.attachBoxCollider(pBody, { 40,20, 0.05f });
-    pBox->pData = new RenderingMaterial({ 1,1,1 }, true, true, 0, 4.0f);
-    pBody->transform.position = { 0,0,-0.025 };
+		GBBody* foot = simulation.createBody();
+		GBCapsuleCollider* cc33 = simulation.attachCapsuleCollider(foot, 0.1f, 0.5);
+		foot->transform.position = leg->transform.position +
+			GBVector3::up() * (-cc3->height * 0.5f - cc3->radius - cc33->height * 0.5f - cc33->radius);
+		foot->updateColliders();
+		foot->layer = ~playerLayer;
+		cc33->pData = new RenderingMaterial({ 1,0,1 }, true, false);
+
+		GBBody* leg1 = simulation.createBody();
+		GBCapsuleCollider* cc4 = simulation.attachCapsuleCollider(leg1, 0.1f, 0.5);
+		leg1->transform.position = body->transform.position +
+			GBVector3::up() * (-cc->height * 0.5f - cc->radius - cc3->height * 0.5f - cc3->radius) +
+			GBVector3::left() * (cc3->radius);
+		leg1->updateColliders();
+		leg1->layer = ~playerLayer;
+		cc4->pData = new RenderingMaterial({ 0,1,1 }, true, false);
+
+		GBBody* foot1 = simulation.createBody();
+		GBCapsuleCollider* cc44 = simulation.attachCapsuleCollider(foot1, 0.1f, 0.5);
+		foot1->transform.position = leg1->transform.position +
+			GBVector3::up() * (-cc4->height * 0.5f - cc4->radius - cc44->height * 0.5f - cc44->radius);
+		foot1->updateColliders();
+		foot1->layer = ~playerLayer;
+		cc44->pData = new RenderingMaterial({ 1,0,1 }, true, false);
+
+		GBBody* head = simulation.createBody();
+		GBCapsuleCollider* cc5 = simulation.attachCapsuleCollider(head, 0.35f, 0.0f);
+		head->transform.position = body->transform.position +
+			GBVector3::up() * (cc->height * 0.5f + cc->radius + cc5->radius);
+		head->updateColliders();
+		head->layer = ~playerLayer;
+		cc5->pData = new RenderingMaterial({ 0,0,1 }, true, false);
 
 
-    playerBody = simulation.createBody();
-    GBCapsuleCollider* pCap = simulation.attachCapsuleCollider(playerBody, 0.5, 1.0f);
-    pCap->pData = new RenderingMaterial({ 0,1,0 }, true, false, 0, 1.0f, false);
-    playerBody->transform.position = { -5,-5, 4 };
-    playerBody->isKinematic = true;
+		GBBallJoint* s = simulation.attachCapsuleBallJoint(body, cc1);
+		s = simulation.attachCapsuleBallJoint(arm1, cc11);
+		s = simulation.attachCapsuleBallJoint(body, cc2);
+		s = simulation.attachCapsuleBallJoint(arm2, cc22);
+		s = simulation.attachCapsuleBallJoint(body, cc4);
+		s = simulation.attachCapsuleBallJoint(leg1, cc44);
+		s = simulation.attachCapsuleBallJoint(body, cc3);
+		s = simulation.attachCapsuleBallJoint(leg, cc33);
+		s = simulation.attachCapsuleBallJoint(body, cc5);
+	}
+
+	GBBody* pBody = simulation.createBody(1.0f, true);
+	GBBoxCollider* pBox = simulation.attachBoxCollider(pBody, { 40,20, 0.05f });
+	pBox->pData = new RenderingMaterial({ 1,1,1 }, true, true, 0, 4.0f);
+	pBody->transform.position = { 0,0,-0.025 };
 
 
-    simulation.init();
+	playerBody = simulation.createBody();
+	GBCapsuleCollider* pCap = simulation.attachCapsuleCollider(playerBody, 0.5, 1.0f);
+	pCap->pData = new RenderingMaterial({ 0,1,0 }, true, false, 0, 1.0f, false);
+	playerBody->transform.position = { -5,-5, 4 };
+	playerBody->isKinematic = true;
+
+
+	simulation.init();
 }
 
 
 void drawBoxEdges(const GBBoxCollider& box, Color color = ORANGE)
 {
-    Vector3 verts[8];
-    for (int i = 0; i < 8; i++)
-    {
-        verts[i] = toRayVec(box.vertices[i]);
-    }
+	Vector3 verts[8];
+	for (int i = 0; i < 8; i++)
+	{
+		verts[i] = toRayVec(box.vertices[i]);
+	}
 
-    // back face
-    DrawLine3D(verts[0], verts[1], color);
-    DrawLine3D(verts[1], verts[2], color);
-    DrawLine3D(verts[2], verts[3], color);
-    DrawLine3D(verts[3], verts[0], color);
-    DrawLine3D(verts[0], verts[2], color);
-    DrawLine3D(verts[1], verts[3], color);
+	// back face
+	DrawLine3D(verts[0], verts[1], color);
+	DrawLine3D(verts[1], verts[2], color);
+	DrawLine3D(verts[2], verts[3], color);
+	DrawLine3D(verts[3], verts[0], color);
+	DrawLine3D(verts[0], verts[2], color);
+	DrawLine3D(verts[1], verts[3], color);
 
-    // front face
-    DrawLine3D(verts[4], verts[5], color);
-    DrawLine3D(verts[5], verts[6], color);
-    DrawLine3D(verts[6], verts[7], color);
-    DrawLine3D(verts[7], verts[4], color);
-    DrawLine3D(verts[4], verts[6], color);
-    DrawLine3D(verts[5], verts[7], color);
+	// front face
+	DrawLine3D(verts[4], verts[5], color);
+	DrawLine3D(verts[5], verts[6], color);
+	DrawLine3D(verts[6], verts[7], color);
+	DrawLine3D(verts[7], verts[4], color);
+	DrawLine3D(verts[4], verts[6], color);
+	DrawLine3D(verts[5], verts[7], color);
 
-    // connections
-    DrawLine3D(verts[0], verts[4], color);
-    DrawLine3D(verts[1], verts[5], color);
-    DrawLine3D(verts[2], verts[6], color);
-    DrawLine3D(verts[3], verts[7], color);
+	// connections
+	DrawLine3D(verts[0], verts[4], color);
+	DrawLine3D(verts[1], verts[5], color);
+	DrawLine3D(verts[2], verts[6], color);
+	DrawLine3D(verts[3], verts[7], color);
 }
 
 void drawSphereFrame(GBTransform sphereTrans, float radius, const RenderingMaterial& mat, Color color)
 {
 
-    for (int i = 0; i < 3; i++)
-    {
-        Vector3 axis(0, 0, 0);
-        if (i == 0)
-            axis.x = 1.0f;
-        else if (i == 1)
-            axis.y = 1.0f;
-        else
-            axis.z = 1.0f;
+	for (int i = 0; i < 3; i++)
+	{
+		Vector3 axis(0, 0, 0);
+		if (i == 0)
+			axis.x = 1.0f;
+		else if (i == 1)
+			axis.y = 1.0f;
+		else
+			axis.z = 1.0f;
 
-        if (mat.drawWireFrame)
-        {
-            DrawCircle3D(
-                toRayVec(sphereTrans.position),
-                radius,
-                axis,
-                270.0f/GB_PI ,
-                color
-            );
-        }
-    }
+		if (mat.drawWireFrame)
+		{
+			DrawCircle3D(
+				toRayVec(sphereTrans.position),
+				radius,
+				axis,
+				270.0f / GB_PI,
+				color
+			);
+		}
+	}
 }
 
 void drawSimulation()
 {
-    for (auto& bodyIt : simulation.rigidBodies)
-    {
-        for (GBCollider* pCol : bodyIt->colliders)
-        {
-            GBBoxCollider* pBox;
-            GBCapsuleCollider* pCap;
-            GBSphereCollider* pSphere;
-            RenderingMaterial* pMat = (RenderingMaterial*)pCol->pData;
+	for (auto& bodyIt : simulation.rigidBodies)
+	{
+		for (GBCollider* pCol : bodyIt->colliders)
+		{
+			GBBoxCollider* pBox;
+			GBCapsuleCollider* pCap;
+			GBSphereCollider* pSphere;
+			RenderingMaterial* pMat = (RenderingMaterial*)pCol->pData;
 
-            if (pMat)
-            {
-                if (!pMat->doRender)
-                    continue;
-                BeginShaderMode(shader);
+			if (pMat)
+			{
+				if (!pMat->doRender)
+					continue;
+				BeginShaderMode(shader);
 
-                switch (pCol->type)
-                {
-                case ColliderType::Sphere:
-                {
-                    pSphere = (GBSphereCollider*)pCol;
-                    sphereModel.transform = makeTransform(pSphere->transform.position, pSphere->transform.rotation,
-                        GBVector3::uniformSize(pSphere->radius * 2.0f));
-                    sphereModel.materials[0] = materials[pMat->materialIndex];
-                    SetShaderValue(
-                        shader,
-                        scaleLoc,
-                        &pMat->textureScale,
-                        SHADER_UNIFORM_FLOAT
-                    );
-
-                    
-
-                    int useTexture = pMat->useTexture;
-
-                    SetShaderValue(
-                        shader,
-                        useTextureLoc,
-                        &useTexture,
-                        SHADER_UNIFORM_INT
-                    );
-
-
-                    DrawModel(sphereModel, { 0,0,0 }, 1.0f, pMat->getColor());
-                    
-                    drawSphereFrame(pSphere->transform, pSphere->radius, *pMat, pCol->pBody->isSleeping ? RED : GREEN);
-
-                    break;
-                }
-                case ColliderType::Box:
-                {
-                    pBox = (GBBoxCollider*)pCol;
-
-                    // Setting the verts of the box does not happen everyframe, instead boxes convert to quads which get the positions anyway
-                    // But this function is left over and still may be useful.
-                    pBox->setVerts();
-                    pCol->pBody->updateColliders();
-                    cubeModel.materials[0] = materials[pMat->materialIndex];
-
-                    cubeModel.transform = makeTransform(pBox->transform.position, pBox->transform.rotation, 2.0f * pBox->halfExtents);
-                    SetShaderValue(
-                        shader,
-                        scaleLoc,
-                        &pMat->textureScale,
-                        SHADER_UNIFORM_FLOAT
-                    );
-
-                    int useTexture = pMat->useTexture;
-
-                    SetShaderValue(
-                        shader,
-                        useTextureLoc,
-                        &useTexture,
-                        SHADER_UNIFORM_INT
-                    );
-
-                    
-
-
-                    DrawModel(cubeModel, { 0,0,0 }, 1.0f, pMat->getColor());
-                    EndShaderMode();
-
-                    if (pMat->drawWireFrame)
-                        drawBoxEdges(*pBox, pCol->pBody->isSleeping?RED:GREEN);
-
-                    break;
-                }
-                case ColliderType::Capsule:
-                    pCap = (GBCapsuleCollider*)pCol;
-
-
-                    SetShaderValue(
-                        shader,
-                        scaleLoc,
-                        &pMat->textureScale,
-                        SHADER_UNIFORM_FLOAT
-                    );
+				switch (pCol->type)
+				{
+				case ColliderType::Sphere:
+				{
+					pSphere = (GBSphereCollider*)pCol;
+					sphereModel.transform = makeTransform(pSphere->transform.position, pSphere->transform.rotation,
+						GBVector3::uniformSize(pSphere->radius * 2.0f));
+					sphereModel.materials[0] = materials[pMat->materialIndex];
+					SetShaderValue(
+						shader,
+						scaleLoc,
+						&pMat->textureScale,
+						SHADER_UNIFORM_FLOAT
+					);
 
 
 
-                    int useTexture = pMat->useTexture;
+					int useTexture = pMat->useTexture;
 
-                    SetShaderValue(
-                        shader,
-                        useTextureLoc,
-                        &useTexture,
-                        SHADER_UNIFORM_INT
-                    );
-
-                    sphereModel.materials[0] = materials[pMat->materialIndex];
-                    cylinderModel.materials[0] = materials[pMat->materialIndex];
-
-                    GBVector3 upper, lower, up;
-                    pCap->extractSphereLocations(upper, lower, &up);
-                    sphereModel.transform = makeTransform(upper, pCap->transform.rotation,
-                        GBVector3::uniformSize(pCap->radius * 2.0f));
-
-                    DrawModel(sphereModel, { 0,0,0 }, 1.0f, pMat->getColor());
-
-                    sphereModel.transform = makeTransform(lower, pCap->transform.rotation,
-                        GBVector3::uniformSize(pCap->radius * 2.0f));
+					SetShaderValue(
+						shader,
+						useTextureLoc,
+						&useTexture,
+						SHADER_UNIFORM_INT
+					);
 
 
-                    DrawModel(sphereModel, { 0,0,0 }, 1.0f, pMat->getColor());
+					DrawModel(sphereModel, { 0,0,0 }, 1.0f, pMat->getColor());
 
-                    cylinderModel.transform = makeTransform(pCap->transform.position - up*pCap->height*0.5f, pCap->transform.rotation,
-                        {2.0f* pCap->radius, 2.0f*pCap->radius, pCap->height});
-                    DrawModel(cylinderModel, { 0,0,0 }, 1.0f, pMat->getColor());
+					drawSphereFrame(pSphere->transform, pSphere->radius, *pMat, pCol->pBody->isSleeping ? RED : GREEN);
+
+					break;
+				}
+				case ColliderType::Box:
+				{
+					pBox = (GBBoxCollider*)pCol;
+
+					// Setting the verts of the box does not happen everyframe, instead boxes convert to quads which get the positions anyway
+					// But this function is left over and still may be useful.
+					pBox->setVerts();
+					pCol->pBody->updateColliders();
+					cubeModel.materials[0] = materials[pMat->materialIndex];
+
+					cubeModel.transform = makeTransform(pBox->transform.position, pBox->transform.rotation, 2.0f * pBox->halfExtents);
+					SetShaderValue(
+						shader,
+						scaleLoc,
+						&pMat->textureScale,
+						SHADER_UNIFORM_FLOAT
+					);
+
+					int useTexture = pMat->useTexture;
+
+					SetShaderValue(
+						shader,
+						useTextureLoc,
+						&useTexture,
+						SHADER_UNIFORM_INT
+					);
 
 
-                    if (pMat->drawWireFrame)
-                    {
-                        drawSphereFrame(GBTransform(lower), pCap->radius, *pMat, pCol->pBody->isSleeping?RED:GREEN);
-                        drawSphereFrame(GBTransform(upper), pCap->radius, *pMat, pCol->pBody->isSleeping ? RED : GREEN);
-                    }
 
-                    break;
-                }
 
-                EndShaderMode();
-            }
-        }
-    }
+					DrawModel(cubeModel, { 0,0,0 }, 1.0f, pMat->getColor());
+					EndShaderMode();
+
+					if (pMat->drawWireFrame)
+						drawBoxEdges(*pBox, pCol->pBody->isSleeping ? RED : GREEN);
+
+					break;
+				}
+				case ColliderType::Capsule:
+					pCap = (GBCapsuleCollider*)pCol;
+
+
+					SetShaderValue(
+						shader,
+						scaleLoc,
+						&pMat->textureScale,
+						SHADER_UNIFORM_FLOAT
+					);
+
+
+
+					int useTexture = pMat->useTexture;
+
+					SetShaderValue(
+						shader,
+						useTextureLoc,
+						&useTexture,
+						SHADER_UNIFORM_INT
+					);
+
+					sphereModel.materials[0] = materials[pMat->materialIndex];
+					cylinderModel.materials[0] = materials[pMat->materialIndex];
+
+					GBVector3 upper, lower, up;
+					pCap->extractSphereLocations(upper, lower, &up);
+					sphereModel.transform = makeTransform(upper, pCap->transform.rotation,
+						GBVector3::uniformSize(pCap->radius * 2.0f));
+
+					DrawModel(sphereModel, { 0,0,0 }, 1.0f, pMat->getColor());
+
+					sphereModel.transform = makeTransform(lower, pCap->transform.rotation,
+						GBVector3::uniformSize(pCap->radius * 2.0f));
+
+
+					DrawModel(sphereModel, { 0,0,0 }, 1.0f, pMat->getColor());
+
+					cylinderModel.transform = makeTransform(pCap->transform.position - up * pCap->height * 0.5f, pCap->transform.rotation,
+						{ 2.0f * pCap->radius, 2.0f * pCap->radius, pCap->height });
+					DrawModel(cylinderModel, { 0,0,0 }, 1.0f, pMat->getColor());
+
+
+					if (pMat->drawWireFrame)
+					{
+						drawSphereFrame(GBTransform(lower), pCap->radius, *pMat, pCol->pBody->isSleeping ? RED : GREEN);
+						drawSphereFrame(GBTransform(upper), pCap->radius, *pMat, pCol->pBody->isSleeping ? RED : GREEN);
+					}
+
+					break;
+				}
+
+				EndShaderMode();
+			}
+		}
+	}
+}
+
+float yaw = 0.0f;
+float pitch = 0.0f;
+float mouseSensitivity = 0.5f;
+
+void movePlayerCamera(Camera& camera, GBBody* playerBody, float dt)
+{
+	Vector2 mouseDelta = GetMouseDelta();
+
+	yaw -= mouseDelta.x * mouseSensitivity * dt;
+	pitch -= mouseDelta.y * mouseSensitivity * dt;
+
+	pitch = Clamp(
+		pitch,
+		-89.0f * DEG2RAD,
+		89.0f * DEG2RAD
+	);
+
+	Vector3 forward;
+
+	forward.x = cosf(pitch) * sinf(yaw);
+	forward.y = sinf(pitch);
+	forward.z = cosf(pitch) * cosf(yaw);
+
+	forward = Vector3Normalize(forward);
+
+	camera.target = Vector3Add(
+		camera.position,
+		forward
+	);
+
+	GBVector3 camFwd = getCameraFwd(camera);
+	GBVector3 camRight = GBCross(camFwd, toGBVec(camera.up)).normalized();
+	float camSpeed = 3.0f;
+	if (IsKeyDown(KEY_W))
+	{
+		playerBody->transform.translate(camFwd.xyComponent().normalized() * dt * camSpeed);
+	}
+	if (IsKeyDown(KEY_S))
+	{
+		playerBody->transform.translate(-camFwd.xyComponent().normalized() * dt * camSpeed);
+	}
+	if (IsKeyDown(KEY_A))
+	{
+		playerBody->transform.translate(-camRight.xyComponent().normalized() * dt * camSpeed);
+	}
+	if (IsKeyDown(KEY_D))
+	{
+		playerBody->transform.translate(camRight.xyComponent().normalized() * dt * camSpeed);
+	}
+	camera.position = toRayVec(playerBody->transform.position + GBVector3{ 0.0f,0.0f,0.75f });
+	UpdateCamera(&camera, CAMERA_CUSTOM);
 }
 
 //------------------------------------------------------------------------------------
@@ -448,169 +501,122 @@ void drawSimulation()
 //------------------------------------------------------------------------------------
 int main(void)
 {
-    // Initialization
-    //--------------------------------------------------------------------------------------
-    const int screenWidth = 1024;
-    const int screenHeight = 768;
+	// Initialization
+	//--------------------------------------------------------------------------------------
+	const int screenWidth = 1024;
+	const int screenHeight = 768;
 
-    InitWindow(screenWidth, screenHeight, "raylib [core] example - 3d camera freea");
+	InitWindow(screenWidth, screenHeight, "raylib [core] example - 3d camera freea");
 
-    // Define the camera to look into our 3d world
-    Camera3D camera = { 0 };
-    camera.position = { 10.0f, 10.0f, 10.0f }; // Camera position
-    camera.target = { 0.0f, 0.0f, 0.0f };      // Camera looking at point
-    camera.up = { 0.0f, 1.0f, 0.0f };          // Camera up vector (rotation towards target)
-    camera.fovy = 65.0f;                                // Camera field-of-view Y
-    camera.projection = CAMERA_PERSPECTIVE;             // Camera projection type
-    Texture2D crateTex = LoadTexture("resources/space_platform_texture.jpg");
-    Texture2D crateTex1 = LoadTexture("resources/crate-diffuse.jpg");
-    Texture2D floorTex = LoadTexture("resources/floor/TerrazzoColor.jpg");
-    SetTextureWrap(crateTex, TEXTURE_WRAP_REPEAT);
-    SetTextureWrap(crateTex1, TEXTURE_WRAP_REPEAT);
-    SetTextureWrap(floorTex, TEXTURE_WRAP_REPEAT);
-
-
-    cubeMesh =  GenMeshCube(1.0f, 1.0f, 1.0f);
-     cubeModel = LoadModelFromMesh(cubeMesh);
-     sphereMesh = GenMeshSphere(0.5f, 20, 20);
-     sphereModel = LoadModelFromMesh(sphereMesh);
-     cylinderMesh = GenMeshCylinder(0.5f, 1.0f, 20.0f);
-     cylinderModel = LoadModelFromMesh(cylinderMesh);
+	// Define the camera to look into our 3d world
+	Camera3D camera = { 0 };
+	camera.position = { 10.0f, 10.0f, 10.0f }; // Camera position
+	camera.target = { 0.0f, 0.0f, 0.0f };      // Camera looking at point
+	camera.up = { 0.0f, 1.0f, 0.0f };          // Camera up vector (rotation towards target)
+	camera.fovy = 65.0f;                                // Camera field-of-view Y
+	camera.projection = CAMERA_PERSPECTIVE;             // Camera projection type
+	Texture2D crateTex = LoadTexture("resources/space_platform_texture.jpg");
+	Texture2D crateTex1 = LoadTexture("resources/crate-diffuse.jpg");
+	Texture2D floorTex = LoadTexture("resources/floor/TerrazzoColor.jpg");
+	SetTextureWrap(crateTex, TEXTURE_WRAP_REPEAT);
+	SetTextureWrap(crateTex1, TEXTURE_WRAP_REPEAT);
+	SetTextureWrap(floorTex, TEXTURE_WRAP_REPEAT);
 
 
-   shader = LoadShader(
-        "Resources/lighting.vs",
-        "Resources/lighting.fs"
-    );
+	cubeMesh = GenMeshCube(1.0f, 1.0f, 1.0f);
+	cubeModel = LoadModelFromMesh(cubeMesh);
+	sphereMesh = GenMeshSphere(0.5f, 20, 20);
+	sphereModel = LoadModelFromMesh(sphereMesh);
+	cylinderMesh = GenMeshCylinder(0.5f, 1.0f, 20.0f);
+	cylinderModel = LoadModelFromMesh(cylinderMesh);
 
-   for (int i = 0; i < NUM_MATERIALS; i++)
-   {
-       materials[i] = LoadMaterialDefault();
-       materials[i].shader = shader;
-   }
-   materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = crateTex;
-   materials[1].maps[MATERIAL_MAP_DIFFUSE].texture = crateTex1;
-   materials[2].maps[MATERIAL_MAP_DIFFUSE].texture = floorTex;
 
-   cubeModel.materials[0] = materials[0];
-   sphereModel.materials[0] = materials[0];
-   cylinderModel.materials[0] = materials[0];
+	shader = LoadShader(
+		"Resources/lighting.vs",
+		"Resources/lighting.fs"
+	);
 
-    viewPosLoc = GetShaderLocation(shader, "viewPos");
-    ambientLoc = GetShaderLocation(shader, "ambient");
-    colDiffuseLocation = GetShaderLocation(shader, "colDiffuse");
-    scaleLoc = GetShaderLocation(shader, "scale");
-    useTextureLoc = GetShaderLocation(shader, "useTexture");
-    matModelLoc = GetShaderLocation(shader, "matModel");
+	for (int i = 0; i < NUM_MATERIALS; i++)
+	{
+		materials[i] = LoadMaterialDefault();
+		materials[i].shader = shader;
+	}
+	materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = crateTex;
+	materials[1].maps[MATERIAL_MAP_DIFFUSE].texture = crateTex1;
+	materials[2].maps[MATERIAL_MAP_DIFFUSE].texture = floorTex;
 
-    float ambient[4] = { 0.2f, 0.2f, 0.2f, 1.0f };
-    SetShaderValue(shader, ambientLoc, ambient, SHADER_UNIFORM_VEC4);
+	cubeModel.materials[0] = materials[0];
+	sphereModel.materials[0] = materials[0];
+	cylinderModel.materials[0] = materials[0];
 
-    DisableCursor();                    // Limit cursor to relative movement inside the window
+	viewPosLoc = GetShaderLocation(shader, "viewPos");
+	ambientLoc = GetShaderLocation(shader, "ambient");
+	colDiffuseLocation = GetShaderLocation(shader, "colDiffuse");
+	scaleLoc = GetShaderLocation(shader, "scale");
+	useTextureLoc = GetShaderLocation(shader, "useTexture");
+	matModelLoc = GetShaderLocation(shader, "matModel");
 
-    SetTargetFPS(60);                   // Set our game to run at 60 frames-per-second
-    //--------------------------------------------------------------------------------------
+	float ambient[4] = { 0.2f, 0.2f, 0.2f, 1.0f };
+	SetShaderValue(shader, ambientLoc, ambient, SHADER_UNIFORM_VEC4);
 
-    initSimulation();
+	DisableCursor();                    // Limit cursor to relative movement inside the window
 
-    Vector4 color;
-    color = { 1,0,0,1 };
-    Vector2 scale = { 2.0f, 2.0f };
-    float yaw = 0.0f;
-    float pitch = 0.0f;
-    float mouseSensitivity = 0.5f;
+	SetTargetFPS(60);                   // Set our game to run at 60 frames-per-second
+	//--------------------------------------------------------------------------------------
 
-    // Main game loop
-    while (!WindowShouldClose())        // Detect window close button or ESC key
-    {
-        float dt = GetFrameTime();
+	initSimulation();
 
-        Vector2 mouseDelta = GetMouseDelta();
+	Vector4 color;
+	color = { 1,0,0,1 };
+	Vector2 scale = { 2.0f, 2.0f };
 
-        yaw -= mouseDelta.x * mouseSensitivity * dt;
-        pitch -= mouseDelta.y * mouseSensitivity * dt;
 
-        pitch = Clamp(
-            pitch,
-            -89.0f * DEG2RAD,
-            89.0f * DEG2RAD
-        );
+	// Main game loop
+	while (!WindowShouldClose())        // Detect window close button or ESC key
+	{
+		float dt = GetFrameTime();
+		movePlayerCamera(camera, playerBody, dt);
 
-        Vector3 forward;
+		simulation.step(dt);
+		// Update
+		//----------------------------------------------------------------------------------
 
-        forward.x = cosf(pitch) * sinf(yaw);
-        forward.y = sinf(pitch);
-        forward.z = cosf(pitch) * cosf(yaw);
-
-        forward = Vector3Normalize(forward);
-
-        camera.target = Vector3Add(
-            camera.position,
-            forward
-        );
-
-        GBVector3 camFwd = getCameraFwd(camera);
-        GBVector3 camRight = GBCross(camFwd, toGBVec(camera.up)).normalized();
-        float camSpeed = 3.0f;
-        if (IsKeyDown(KEY_W))
-        {
-            playerBody->transform.translate(camFwd.xyComponent().normalized() * dt* camSpeed);
-        }
-        if (IsKeyDown(KEY_S))
-        {
-            playerBody->transform.translate(-camFwd.xyComponent().normalized() * dt * camSpeed);
-        }
-        if (IsKeyDown(KEY_A))
-        {
-            playerBody->transform.translate(-camRight.xyComponent().normalized() * dt * camSpeed);
-        }
-        if (IsKeyDown(KEY_D))
-        {
-            playerBody->transform.translate(camRight.xyComponent().normalized() * dt * camSpeed);
-        }
-        camera.position = toRayVec(playerBody->transform.position + GBVector3{ 0.0f,0.0f,0.75f });
-        UpdateCamera(&camera, CAMERA_CUSTOM);
-
-        simulation.step(dt);
-        // Update
-        //----------------------------------------------------------------------------------
-
-        SetShaderValue(
-            shader,
-            viewPosLoc,
-            &camera.position,
-            SHADER_UNIFORM_VEC3
-        );
+		SetShaderValue(
+			shader,
+			viewPosLoc,
+			&camera.position,
+			SHADER_UNIFORM_VEC3
+		);
 
 
 
-        
-        //----------------------------------------------------------------------------------
 
-        // Draw
-        //----------------------------------------------------------------------------------
-        BeginDrawing();
+		//----------------------------------------------------------------------------------
 
-        ClearBackground(RAYWHITE);
+		// Draw
+		//----------------------------------------------------------------------------------
+		BeginDrawing();
 
-        BeginMode3D(camera);
+		ClearBackground(RAYWHITE);
 
-        drawSimulation();
+		BeginMode3D(camera);
 
-        DrawGrid(100, 1.0f);
+		drawSimulation();
 
-        EndMode3D();
+		DrawGrid(100, 1.0f);
 
-        DrawText("GRAVITY BALL!", 20, 20, 10, BLACK);
+		EndMode3D();
 
-        EndDrawing();
-        //----------------------------------------------------------------------------------
-    }
+		DrawText("GRAVITY BALL!", 20, 20, 10, BLACK);
 
-    // De-Initialization
-    //--------------------------------------------------------------------------------------
-    CloseWindow();        // Close window and OpenGL context
-    //--------------------------------------------------------------------------------------
+		EndDrawing();
+		//----------------------------------------------------------------------------------
+	}
 
-    return 0;
+	// De-Initialization
+	//--------------------------------------------------------------------------------------
+	CloseWindow();        // Close window and OpenGL context
+	//--------------------------------------------------------------------------------------
+
+	return 0;
 }
