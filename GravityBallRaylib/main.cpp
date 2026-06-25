@@ -230,10 +230,9 @@ void initSimulation()
 
 
 	playerBody = simulation.createBody();
-	GBCapsuleCollider* pCap = simulation.attachCapsuleCollider(playerBody, 0.5, 1.0f);
-	pCap->pData = new RenderingMaterial({ 0,1,0 }, true, false, 0, 1.0f, false);
+	GBSphereCollider* ps = simulation.attachSphereCollider(playerBody, 0.5);
+	ps->pData = new RenderingMaterial({ 0.6,0.89,0.96 }, true, true, 0, 0.3f, true);
 	playerBody->transform.position = { -5,-5, 4 };
-	playerBody->isKinematic = true;
 
 
 	simulation.init();
@@ -475,26 +474,91 @@ void movePlayerCamera(Camera& camera, GBBody* playerBody, float dt)
 
 	GBVector3 camFwd = getCameraFwd(camera);
 	GBVector3 camRight = GBCross(camFwd, toGBVec(camera.up)).normalized();
-	float camSpeed = 3.0f;
+	float camSpeed = 3.0f * dt;
 	if (IsKeyDown(KEY_W))
 	{
-		playerBody->transform.translate(camFwd.xyComponent().normalized() * dt * camSpeed);
+		playerBody->transform.translate(camFwd.xyComponent().normalized() * camSpeed);
 	}
 	if (IsKeyDown(KEY_S))
 	{
-		playerBody->transform.translate(-camFwd.xyComponent().normalized() * dt * camSpeed);
+		playerBody->transform.translate(-camFwd.xyComponent().normalized() * camSpeed);
 	}
 	if (IsKeyDown(KEY_A))
 	{
-		playerBody->transform.translate(-camRight.xyComponent().normalized() * dt * camSpeed);
+		playerBody->transform.translate(-camRight.xyComponent().normalized() * camSpeed);
 	}
 	if (IsKeyDown(KEY_D))
 	{
-		playerBody->transform.translate(camRight.xyComponent().normalized() * dt * camSpeed);
+		playerBody->transform.translate(camRight.xyComponent().normalized() * camSpeed);
 	}
 	camera.position = toRayVec(playerBody->transform.position + GBVector3{ 0.0f,0.0f,0.75f });
 	UpdateCamera(&camera, CAMERA_CUSTOM);
 }
+
+GBVector3 cameraLerpPostion;
+float lerpYaw = 0.0f;
+float lerpPitch = 0.0f;
+void movePlayerBall(Camera& camera, GBBody* playerBody, float dt)
+{
+	Vector2 mouseDelta = GetMouseDelta();
+
+	lerpYaw -= mouseDelta.x * 0.1f * dt;
+	lerpPitch -= mouseDelta.y * 0.1f* dt;
+
+	std::cout << lerpPitch << std::endl;
+
+	lerpPitch = Clamp(
+		lerpPitch,
+		-20.0f * DEG2RAD,
+		20.0f * DEG2RAD
+	);
+
+	yaw = GBLerp(yaw, lerpYaw, 5.0f * dt);
+	pitch = GBLerp(pitch, lerpPitch, 5.0f * dt);
+
+
+	Vector3 forward;
+
+	forward.x = sinf(yaw);
+	forward.y = 0.0f;
+	forward.z = cosf(yaw);
+
+	forward = Vector3Normalize(forward);
+	
+	float offset = 3.0f * (pitch * 2.0f / (GB_PI));
+
+	camera.target = toRayVec(playerBody->transform.position + GBVector3(0,0,offset));
+
+	GBVector3 camFwd = toGBVec(forward);
+	GBVector3 camRight = GBCross(camFwd, toGBVec(camera.up)).normalized();
+	float camSpeed = 3.0f;
+	float adjustedForce = camSpeed / dt;
+	if (IsKeyDown(KEY_W))
+	{
+		playerBody->addForce(camFwd.xyComponent().normalized() * adjustedForce);
+	}
+	if (IsKeyDown(KEY_S))
+	{
+		playerBody->addForce(-camFwd.xyComponent().normalized() * adjustedForce);
+	}
+	if (IsKeyDown(KEY_A))
+	{
+		playerBody->addForce(-camRight.xyComponent().normalized() * adjustedForce);
+	}
+	if (IsKeyDown(KEY_D))
+	{
+		playerBody->addForce(camRight.xyComponent().normalized() * adjustedForce);
+	}
+
+	const static float fwdOffset = 8.0f;
+	const static float upOffset = 5.0f;
+
+	cameraLerpPostion = playerBody->transform.position - camFwd* fwdOffset + GBVector3{0.0f,0.0f,upOffset};
+	GBVector3 camPos = GBLerp(toGBVec(camera.position), cameraLerpPostion, 5.0f * dt);
+	camera.position = toRayVec(camPos);
+	UpdateCamera(&camera, CAMERA_CUSTOM);
+}
+
 
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -575,7 +639,7 @@ int main(void)
 	while (!WindowShouldClose())        // Detect window close button or ESC key
 	{
 		float dt = GetFrameTime();
-		movePlayerCamera(camera, playerBody, dt);
+		movePlayerBall(camera, playerBody, dt);
 
 		simulation.step(dt);
 		// Update
