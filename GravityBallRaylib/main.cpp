@@ -15,10 +15,21 @@
 #include "GBSimulation.h"
 #include "raylib.h"
 #include "raymath.h"
+#include <iostream>
 
 Vector3 toRayVec(GBVector3 v)
 {
     return { v.y, v.z, v.x };
+}
+
+GBVector3 toGBVec(Vector3 v)
+{
+    return { v.z, v.x, v.y };
+}
+
+GBVector3 getCameraFwd(const Camera& camera)
+{
+    return toGBVec(Vector3Subtract(camera.target, camera.position)).normalized();
 }
 
 
@@ -73,8 +84,11 @@ struct RenderingMaterial
     bool useTexture = false;
     float textureScale = 1.0f;
     int materialIndex = 0;
-    RenderingMaterial(GBVector3 col, bool drawWireFrame = false, bool useTexture = false, int materialIndex = 0, float textureScale = 1.0f) :
-        color(col) , drawWireFrame(drawWireFrame), useTexture(useTexture),  materialIndex(materialIndex), textureScale(textureScale)
+    bool doRender = true;
+    RenderingMaterial(GBVector3 col, bool drawWireFrame = false, 
+        bool useTexture = false, int materialIndex = 0, float textureScale = 1.0f, bool doRender = true) :
+        color(col) , drawWireFrame(drawWireFrame), useTexture(useTexture), 
+        materialIndex(materialIndex), textureScale(textureScale), doRender(doRender)
     {
     }
 
@@ -88,6 +102,8 @@ struct RenderingMaterial
         return c;
     }
 };
+
+GBBody* playerBody;
 
 void initSimulation()
 {
@@ -212,6 +228,14 @@ void initSimulation()
     pBox->pData = new RenderingMaterial({ 1,1,1 }, true, true, 0, 4.0f);
     pBody->transform.position = { 0,0,-0.025 };
 
+
+    playerBody = simulation.createBody();
+    GBCapsuleCollider* pCap = simulation.attachCapsuleCollider(playerBody, 0.5, 1.0f);
+    pCap->pData = new RenderingMaterial({ 0,1,0 }, true, false, 0, 1.0f, false);
+    playerBody->transform.position = { -5,-5, 4 };
+    playerBody->isKinematic = true;
+
+
     simulation.init();
 }
 
@@ -286,6 +310,8 @@ void drawSimulation()
 
             if (pMat)
             {
+                if (!pMat->doRender)
+                    continue;
                 BeginShaderMode(shader);
 
                 switch (pCol->type)
@@ -490,16 +516,64 @@ int main(void)
     Vector4 color;
     color = { 1,0,0,1 };
     Vector2 scale = { 2.0f, 2.0f };
+    float yaw = 0.0f;
+    float pitch = 0.0f;
+    float mouseSensitivity = 0.5f;
 
     // Main game loop
     while (!WindowShouldClose())        // Detect window close button or ESC key
     {
         float dt = GetFrameTime();
 
+        Vector2 mouseDelta = GetMouseDelta();
+
+        yaw -= mouseDelta.x * mouseSensitivity * dt;
+        pitch -= mouseDelta.y * mouseSensitivity * dt;
+
+        pitch = Clamp(
+            pitch,
+            -89.0f * DEG2RAD,
+            89.0f * DEG2RAD
+        );
+
+        Vector3 forward;
+
+        forward.x = cosf(pitch) * sinf(yaw);
+        forward.y = sinf(pitch);
+        forward.z = cosf(pitch) * cosf(yaw);
+
+        forward = Vector3Normalize(forward);
+
+        camera.target = Vector3Add(
+            camera.position,
+            forward
+        );
+
+        GBVector3 camFwd = getCameraFwd(camera);
+        GBVector3 camRight = GBCross(camFwd, toGBVec(camera.up)).normalized();
+        float camSpeed = 3.0f;
+        if (IsKeyDown(KEY_W))
+        {
+            playerBody->transform.translate(camFwd.xyComponent().normalized() * dt* camSpeed);
+        }
+        if (IsKeyDown(KEY_S))
+        {
+            playerBody->transform.translate(-camFwd.xyComponent().normalized() * dt * camSpeed);
+        }
+        if (IsKeyDown(KEY_A))
+        {
+            playerBody->transform.translate(-camRight.xyComponent().normalized() * dt * camSpeed);
+        }
+        if (IsKeyDown(KEY_D))
+        {
+            playerBody->transform.translate(camRight.xyComponent().normalized() * dt * camSpeed);
+        }
+        camera.position = toRayVec(playerBody->transform.position + GBVector3{ 0.0f,0.0f,0.75f });
+        UpdateCamera(&camera, CAMERA_CUSTOM);
+
         simulation.step(dt);
         // Update
         //----------------------------------------------------------------------------------
-        UpdateCamera(&camera, CAMERA_FREE);
 
         SetShaderValue(
             shader,
@@ -510,7 +584,7 @@ int main(void)
 
 
 
-        if (IsKeyPressed(KEY_Z)) camera.target = { 0.0f, 0.0f, 0.0f };
+        
         //----------------------------------------------------------------------------------
 
         // Draw
