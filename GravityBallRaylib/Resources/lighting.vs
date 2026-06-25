@@ -9,7 +9,7 @@ attribute vec4 vertexColor;
 // Input uniform values
 uniform mat4 mvp;
 uniform mat4 matModel;
-uniform vec2 scale;
+uniform float scale;
 
 // Output vertex attributes (to fragment shader)
 varying vec3 fragPosition;
@@ -49,7 +49,17 @@ void main()
 {
     // Send vertex attributes to fragment shader
     fragPosition = vec3(matModel*vec4(vertexPosition, 1.0));
-    fragTexCoord = vertexTexCoord * scale;
+    vec3 n = abs(vertexNormal);
+    
+    if (n.y > max(n.x, n.z))
+        fragTexCoord = vertexPosition.xz;
+    else if (n.x > n.z)
+        fragTexCoord = vertexPosition.zy;
+    else
+        fragTexCoord = vertexPosition.xy;
+    fragTexCoord -= vec2(0.5,0.5);
+    fragTexCoord *= scale;
+
     fragColor = vertexColor;
 
     mat3 normalMatrix = transpose(inverse(mat3(matModel)));

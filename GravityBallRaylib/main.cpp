@@ -208,11 +208,11 @@ void initSimulation()
     }
 
     GBBody* pBody = simulation.createBody(1.0f, true);
-    GBBoxCollider* pBox = simulation.attachBoxCollider(pBody, { 20,20, 0.05f });
-    pBox->pData = new RenderingMaterial({ 1,1,1 }, true, true, 0, 0.1f);
+    GBBoxCollider* pBox = simulation.attachBoxCollider(pBody, { 40,20, 0.05f });
+    pBox->pData = new RenderingMaterial({ 1,1,1 }, true, true, 0, 4.0f);
     pBody->transform.position = { 0,0,-0.025 };
 
-    //simulation.init();
+    simulation.init();
 }
 
 
@@ -296,12 +296,11 @@ void drawSimulation()
                     sphereModel.transform = makeTransform(pSphere->transform.position, pSphere->transform.rotation,
                         GBVector3::uniformSize(pSphere->radius * 2.0f));
                     sphereModel.materials[0] = materials[pMat->materialIndex];
-                    Vector2 s = Vector2Scale({ 2.0f , 2.0f }, pMat->textureScale);
                     SetShaderValue(
                         shader,
                         scaleLoc,
-                        &s,
-                        SHADER_UNIFORM_VEC2
+                        &pMat->textureScale,
+                        SHADER_UNIFORM_FLOAT
                     );
 
                     
@@ -333,14 +332,11 @@ void drawSimulation()
                     cubeModel.materials[0] = materials[pMat->materialIndex];
 
                     cubeModel.transform = makeTransform(pBox->transform.position, pBox->transform.rotation, 2.0f * pBox->halfExtents);
-                    float maxX = GBMax(pBox->halfExtents.x, pBox->halfExtents.y);
-                    float maxY = GBMax(maxX, pBox->halfExtents.z);
-                    Vector2 s = Vector2Scale({ 2.0f * maxX, 2.0f * maxY }, pMat->textureScale);
                     SetShaderValue(
                         shader,
                         scaleLoc,
-                        &s,
-                        SHADER_UNIFORM_VEC2
+                        &pMat->textureScale,
+                        SHADER_UNIFORM_FLOAT
                     );
 
                     int useTexture = pMat->useTexture;
@@ -367,12 +363,11 @@ void drawSimulation()
                     pCap = (GBCapsuleCollider*)pCol;
 
 
-                    Vector2 s = { 2.0f , 2.0f };
                     SetShaderValue(
                         shader,
                         scaleLoc,
-                        &s,
-                        SHADER_UNIFORM_VEC2
+                        &pMat->textureScale,
+                        SHADER_UNIFORM_FLOAT
                     );
 
 
@@ -443,8 +438,10 @@ int main(void)
     camera.projection = CAMERA_PERSPECTIVE;             // Camera projection type
     Texture2D crateTex = LoadTexture("resources/space_platform_texture.jpg");
     Texture2D crateTex1 = LoadTexture("resources/crate-diffuse.jpg");
+    Texture2D floorTex = LoadTexture("resources/floor/TerrazzoColor.jpg");
     SetTextureWrap(crateTex, TEXTURE_WRAP_REPEAT);
     SetTextureWrap(crateTex1, TEXTURE_WRAP_REPEAT);
+    SetTextureWrap(floorTex, TEXTURE_WRAP_REPEAT);
 
 
     cubeMesh =  GenMeshCube(1.0f, 1.0f, 1.0f);
@@ -467,6 +464,7 @@ int main(void)
    }
    materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = crateTex;
    materials[1].maps[MATERIAL_MAP_DIFFUSE].texture = crateTex1;
+   materials[2].maps[MATERIAL_MAP_DIFFUSE].texture = floorTex;
 
    cubeModel.materials[0] = materials[0];
    sphereModel.materials[0] = materials[0];
@@ -497,8 +495,7 @@ int main(void)
     while (!WindowShouldClose())        // Detect window close button or ESC key
     {
         float dt = GetFrameTime();
-        if (dt > 1.0f / 60.0f)
-            dt = 1.0f / 60.0f;
+
         simulation.step(dt);
         // Update
         //----------------------------------------------------------------------------------
@@ -526,7 +523,7 @@ int main(void)
 
         drawSimulation();
 
-        DrawGrid(10, 1.0f);
+        DrawGrid(100, 1.0f);
 
         EndMode3D();
 
