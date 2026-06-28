@@ -625,7 +625,7 @@ int main(void)
 
 	DisableCursor();                    // Limit cursor to relative movement inside the window
 
-	SetTargetFPS(120);                   // Set our game to run at 60 frames-per-second
+	SetTargetFPS(60);                   // Set our game to run at 60 frames-per-second
 	//--------------------------------------------------------------------------------------
 
 	initSimulation();
@@ -639,16 +639,9 @@ int main(void)
 	while (!WindowShouldClose())        // Detect window close button or ESC key
 	{
 		float dt = GetFrameTime();
-		std::cout << 1.0f / dt << std::endl;
 		movePlayerBall(camera, playerBody, dt);
-		static float accumulatedTime = 0.0f;
-		static const float fixedDt = 1.0f / 60.0f;
-		while (accumulatedTime <= dt)
-		{
-			simulation.step(fixedDt);
-			accumulatedTime += dt;
-		}
-		accumulatedTime = 0.0f;
+
+		simulation.step(dt);
 		// Update
 		//----------------------------------------------------------------------------------
 

@@ -1,5 +1,4 @@
-﻿#pragma once
-#include "GBInclude.h"
+﻿#include "GBInclude.h"
 
 
 #include <typeinfo>
@@ -851,7 +850,7 @@ struct GBSimulation
 			return;
 		}
 
-		if (bodyIsPureColliderType(*manifold.pIncident, ColliderType::Sphere) && manifold.pReference)
+		if (bodyIsPureColliderType(*manifold.pIncident, ColliderType::Sphere))
 		{
 			bool otherIsSphere = bodyIsPureColliderType(*manifold.pReference, ColliderType::Sphere);
 			if (otherIsSphere)
@@ -863,7 +862,7 @@ struct GBSimulation
 
 		const float restitution = body.restitution;
 		int referenceColliders = GBMax(1, manifold.referenceColliders.size() - 1);
-		int numCols = manifold.countColliders(body);
+
 		for (int i = 0; i < manifold.numContacts; i++)
 		{
 			const GBContact& c = manifold.contacts[i];
@@ -906,9 +905,7 @@ struct GBSimulation
 				-(1.0f + restitution) * vn
 				- bias;
 			jn /= invMassEff;
-
-			
-			jn /= (float)numCols;
+			jn /= body.colliders.size();
 
 			// Clamp for stability (like box solver)
 			jn = GBClamp(jn, 0.0f, 20.0f * body.mass);
@@ -1669,8 +1666,7 @@ struct GBSimulation
 	// ------------------------------------------------------------
 	void step(float deltaTime)
 	{
-
-		if (deltaTime > maxDeltaTime)
+		if (deltaTime > maxDeltaTime || deltaTime <= 0.0f)
 			deltaTime = maxDeltaTime;
 		deltaTime = timeScale * deltaTime;
 		float interDeltaTime = deltaTime / (float)solverIterations;
