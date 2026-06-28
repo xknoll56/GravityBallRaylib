@@ -229,7 +229,7 @@ void initSimulation()
 	pBody->transform.position = { 0,0,-0.025 };
 
 
-	playerBody = simulation.createBody();
+	playerBody = simulation.createBody(5.0f);
 	GBSphereCollider* ps = simulation.attachSphereCollider(playerBody, 0.5);
 	ps->pData = new RenderingMaterial({ 0.6,0.89,0.96 }, true, true, 0, 0.3f, true);
 	playerBody->transform.position = { -5,-5, 4 };
@@ -531,7 +531,7 @@ void movePlayerBall(Camera& camera, GBBody* playerBody, float dt)
 
 	GBVector3 camFwd = toGBVec(forward);
 	GBVector3 camRight = GBCross(camFwd, toGBVec(camera.up)).normalized();
-	float camSpeed = 3.0f;
+	float camSpeed = 15.0f;
 	float adjustedForce = camSpeed / dt;
 	if (IsKeyDown(KEY_W))
 	{
